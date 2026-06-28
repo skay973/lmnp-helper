@@ -27,7 +27,7 @@ export function LoginPage() {
           <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Lock size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">État des lieux</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Ma LMNP</h1>
           <p className="text-sm text-gray-500">Connectez-vous pour continuer</p>
         </div>
 

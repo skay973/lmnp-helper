@@ -14,7 +14,7 @@ import { type EtatDesLieux, type InfosGenerales, type Piece, type TypePiece, cre
 import { type Appartement, type PieceStock } from './types/appartement'
 import { type LocataireAvecStatut } from './types/locataire'
 import { syncInventaireWithPieces } from './types/inventaire'
-import { CheckCircle2, LogOut, Loader2, Building2, ChevronLeft, Download } from 'lucide-react'
+import { CheckCircle2, LogOut, Loader2, ChevronLeft, Download } from 'lucide-react'
 import { generateEDLPdf } from './lib/generatePDF'
 import { generateInventairePdf } from './lib/generateInventairePdf'
 import { Button } from './components/ui/button'
@@ -170,13 +170,16 @@ export default function App() {
     setGeneratingInventairePdf(false)
   }
 
-  const headerTitle = () => {
-    if (screen === 'appartements') return 'Mes appartements'
-    if (screen === 'detail_appt') return selectedAppt?.nom ?? ''
-    if (screen === 'inventaire_appt') return `Inventaire — ${selectedAppt?.nom ?? ''}`
-    if (screen === 'done') return 'Sauvegardé'
-    if (edlStep === 'piece_detail' && editingPieceIndex !== null) return etat?.pieces[editingPieceIndex]?.nom ?? ''
-    return selectedLocataire ? `${selectedLocataire.prenom} ${selectedLocataire.nom}` : 'Nouvel état des lieux'
+  const getBreadcrumbs = (): string[] => {
+    const root = 'Ma LMNP'
+    if (screen === 'appartements') return [root, 'Appartements']
+    if (screen === 'detail_appt') return [root, selectedAppt?.nom ?? '']
+    if (screen === 'inventaire_appt') return [root, selectedAppt?.nom ?? '', 'Inventaire']
+    if (screen === 'done') return [root, 'Sauvegardé']
+    if (edlStep === 'piece_detail' && editingPieceIndex !== null)
+      return [root, selectedAppt?.nom ?? '', etat?.pieces[editingPieceIndex]?.nom ?? '']
+    const locName = selectedLocataire ? `${selectedLocataire.prenom} ${selectedLocataire.nom}` : 'Nouvel EDL'
+    return [root, selectedAppt?.nom ?? '', locName]
   }
 
   if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 size={32} className="animate-spin text-blue-600" /></div>
@@ -187,13 +190,20 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1 min-w-0">
               {screen === 'edl_form' && edlStep !== 'piece_detail' && (
                 <button type="button" onClick={() => setScreen('detail_appt')}
                   className="p-1 -ml-1 text-blue-600 touch-manipulation shrink-0"><ChevronLeft size={22} /></button>
               )}
-              {screen === 'appartements' && <Building2 size={18} className="text-blue-600 shrink-0" />}
-              <h1 className="text-base font-bold text-gray-900 truncate">{headerTitle()}</h1>
+              {getBreadcrumbs().map((crumb, i, arr) => (
+                <span key={i} className="flex items-center gap-1 min-w-0">
+                  {i > 0 && <span className="text-gray-300 text-xs shrink-0">›</span>}
+                  <span className={i === arr.length - 1
+                    ? 'text-sm font-bold text-gray-900 truncate'
+                    : 'text-xs text-gray-400 shrink-0 max-w-[70px] truncate'
+                  }>{crumb}</span>
+                </span>
+              ))}
             </div>
             <button onClick={signOut} className="p-2 text-gray-400 hover:text-gray-600 touch-manipulation shrink-0 ml-2" title="Déconnexion">
               <LogOut size={18} />
