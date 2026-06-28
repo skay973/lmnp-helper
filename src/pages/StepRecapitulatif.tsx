@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 interface Props {
   data: EtatDesLieux
   onBack: () => void
-  onSuccess: (id: string) => void
+  onSuccess: (id: string, data: EtatDesLieux) => void
 }
 
 export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
@@ -32,6 +32,9 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
           locataire_id: data.locataireId ?? null,
           infos_generales: data.infosGenerales,
           pieces: data.pieces,
+          parties_privatives: data.partiesPrivatives,
+          equipements: data.equipements,
+          equipements_energetiques: data.equipementsEnergetiques,
           observations: data.observations,
           created_at: new Date().toISOString(),
         }])
@@ -39,7 +42,7 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
         .single()
 
       if (err) throw err
-      onSuccess(saved.id)
+      onSuccess(saved.id, data)
     } catch {
       setError('Erreur lors de la sauvegarde. Vérifiez votre connexion.')
       setSaving(false)

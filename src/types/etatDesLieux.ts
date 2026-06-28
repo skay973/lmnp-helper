@@ -66,13 +66,24 @@ export interface InfosGenerales {
   equipements_communs?: Record<string, ElementEtat>
 }
 
+export interface EquipementsEnergetiques {
+  ballon_etat?: string
+  ballon_date_entretien?: string
+  clim_salon_etat?: string
+  clim_chambre_etat?: string
+  clim_date_entretien?: string
+}
+
 export interface EtatDesLieux {
   id?: string
   appartementId?: string
   locataireId?: string
   infosGenerales: InfosGenerales
   pieces: Piece[]
-  observations?: string
+  partiesPrivatives: Record<string, ElementEtat>
+  equipements: Record<string, ElementEtat>
+  equipementsEnergetiques: EquipementsEnergetiques
+  observations: string
   createdAt?: string
 }
 
