@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronUp, Plus, Trash2, Pencil } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Trash2, Pencil, ClipboardList } from 'lucide-react'
 import {
   type Inventaire, type InventaireItem, type InventaireEtat, type EtatPhysique,
   INVENTAIRE_ETAT_LABELS, INVENTAIRE_ETAT_COLORS,
@@ -184,7 +184,12 @@ export function StepInventaire({ value, onChange, onSaveInventaire, onNext, onBa
 
   return (
     <>
-      <div className="space-y-3 pb-8">
+      <div className="space-y-3 pb-24">
+        <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
+          <span className="text-blue-600"><ClipboardList size={18} /></span>
+          <h3 className="font-semibold text-gray-900">Inventaire</h3>
+        </div>
+
         {value.map(({ section, items }, sectionIdx) => {
           const filled = items.filter(it => it.etatEntree).length
           const isOpen = openSections[section]
@@ -290,7 +295,11 @@ export function StepInventaire({ value, onChange, onSaveInventaire, onNext, onBa
           )
         })}
 
-        <div className="flex gap-3 pt-2">
+      </div>
+
+      {/* Sticky footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3 pb-safe">
+        <div className="max-w-lg mx-auto flex gap-3">
           <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
           <Button onClick={onNext} className="flex-1">Récapitulatif →</Button>
         </div>

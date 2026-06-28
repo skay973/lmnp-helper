@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Lock, Wrench, Zap, StickyNote } from 'lucide-react'
 import { useState } from 'react'
 
 interface Props {
@@ -57,10 +57,13 @@ function ElementCard({ label, value, onChange }: { label: string; value: Element
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-gray-900 text-base border-b border-gray-200 pb-1">{title}</h3>
+      <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
+        <span className="text-blue-600">{icon}</span>
+        <h3 className="font-semibold text-gray-900">{title}</h3>
+      </div>
       {children}
     </div>
   )
@@ -82,10 +85,10 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
   )
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-24">
 
       {/* Parties privatives */}
-      <Section title="Parties privatives">
+      <Section icon={<Lock size={18} />} title="Parties privatives">
         {Object.entries(partiesPrivatives).map(([key, val]) => (
           <ElementCard key={key} label={key} value={val}
             onChange={v => onChangePartiesPrivatives({ ...partiesPrivatives, [key]: v })} />
@@ -93,7 +96,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
       </Section>
 
       {/* Équipements et aménagements */}
-      <Section title="Équipements et aménagements">
+      <Section icon={<Wrench size={18} />} title="Équipements et aménagements">
         {Object.entries(equipements).map(([key, val]) => (
           <ElementCard key={key} label={key} value={val}
             onChange={v => onChangeEquipements({ ...equipements, [key]: v })} />
@@ -101,7 +104,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
       </Section>
 
       {/* Équipements énergétiques */}
-      <Section title="Équipements énergétiques">
+      <Section icon={<Zap size={18} />} title="Équipements énergétiques">
         <div className="bg-white rounded-xl p-4 space-y-4 border border-gray-200">
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-3">Ballon d'eau chaude (ECS)</p>
@@ -129,7 +132,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
       </Section>
 
       {/* Observations globales */}
-      <Section title="Observations générales">
+      <Section icon={<StickyNote size={18} />} title="Observations générales">
         <Textarea
           placeholder="Observations générales sur l'état du logement..."
           value={observations}
@@ -138,9 +141,12 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
         />
       </Section>
 
-      <div className="flex gap-3 pt-2">
-        <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
-        <Button onClick={onNext} className="flex-1">Inventaire →</Button>
+      {/* Sticky footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3 pb-safe">
+        <div className="max-w-lg mx-auto flex gap-3">
+          <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
+          <Button onClick={onNext} className="flex-1">Inventaire →</Button>
+        </div>
       </div>
     </div>
   )

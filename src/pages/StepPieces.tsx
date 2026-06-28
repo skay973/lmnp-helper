@@ -1,4 +1,4 @@
-import { Plus, Trash2, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, ChevronRight, CheckCircle2, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { type Piece, type TypePiece, TYPE_PIECE_LABELS, createPiece, getPieceCompletion } from '@/types/etatDesLieux'
 import { cn } from '@/lib/utils'
@@ -40,10 +40,11 @@ export function StepPieces({ pieces, onChange, onSavePieces, onNext, onBack, onE
   }).length
 
   return (
-    <div className="space-y-4 pb-8">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">{pieces.length} pièce{pieces.length > 1 ? 's' : ''}</p>
-        <span className="text-xs font-medium text-gray-500">{totalCompleted}/{pieces.length} complètes</span>
+    <div className="space-y-4 pb-24">
+      <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
+        <span className="text-blue-600"><LayoutGrid size={18} /></span>
+        <h3 className="font-semibold text-gray-900">Pièces</h3>
+        <span className="ml-auto text-xs font-medium text-gray-500">{totalCompleted}/{pieces.length} complètes</span>
       </div>
 
       <div className="space-y-2">
@@ -96,11 +97,14 @@ export function StepPieces({ pieces, onChange, onSavePieces, onNext, onBack, onE
         <Plus size={14} />Ajouter une pièce
       </button>
 
-      <div className="flex gap-3 pt-2">
-        <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
-        <Button onClick={onNext} className="flex-1" disabled={pieces.length === 0}>
-          Autres →
-        </Button>
+      {/* Sticky footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3 pb-safe">
+        <div className="max-w-lg mx-auto flex gap-3">
+          <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
+          <Button onClick={onNext} className="flex-1" disabled={pieces.length === 0}>
+            Autres →
+          </Button>
+        </div>
       </div>
 
       {showModal && (

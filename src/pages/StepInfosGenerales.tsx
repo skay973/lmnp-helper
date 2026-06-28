@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { type InfosGenerales } from '@/types/etatDesLieux'
 import { type CleItem } from '@/types/appartement'
-import { Home, User, Zap, Droplets, Key } from 'lucide-react'
+import { Home, User, Zap, Droplets, Key, CalendarDays } from 'lucide-react'
 
 interface Props {
   value: InfosGenerales
@@ -75,7 +75,7 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
     value.dateEtat
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-24">
 
       {/* Type de mouvement */}
       <div className="flex gap-3">
@@ -97,7 +97,8 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         ))}
       </div>
 
-      <Section icon={<Home size={18} />} title="Logement">
+      {/* Calendrier */}
+      <Section icon={<CalendarDays size={18} />} title="Calendrier">
         <Field label="Date de l'état des lieux">
           <Input
             type="date"
@@ -105,6 +106,28 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
             onChange={e => set('dateEtat', e.target.value)}
           />
         </Field>
+        {value.bail !== undefined && (
+          <>
+            <Field label="Début du bail">
+              <Input
+                type="date"
+                value={value.bail?.dateDebut ?? ''}
+                onChange={e => set('bail', { ...value.bail, dateDebut: e.target.value })}
+              />
+            </Field>
+            <Field label="Durée du bail">
+              <Input
+                placeholder="1 an"
+                value={value.bail?.duree ?? ''}
+                onChange={e => set('bail', { ...value.bail, duree: e.target.value })}
+              />
+            </Field>
+          </>
+        )}
+      </Section>
+
+      {/* Logement */}
+      <Section icon={<Home size={18} />} title="Logement">
         <Field label="Adresse">
           <Input value={value.adresse} readOnly className="bg-gray-50 text-gray-600" />
         </Field>
@@ -116,26 +139,14 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
             <Input value={value.ville} readOnly className="bg-gray-50 text-gray-600" />
           </Field>
         </div>
-        {value.bail !== undefined && (
-          <div className="space-y-3">
-            <Field label="Début du bail">
-              <Input
-                type="date"
-                value={value.bail?.dateDebut ?? ''}
-                onChange={e => set('bail', { ...value.bail, dateDebut: e.target.value })}
-              />
-            </Field>
-            <Field label="Durée">
-              <Input
-                placeholder="1 an"
-                value={value.bail?.duree ?? ''}
-                onChange={e => set('bail', { ...value.bail, duree: e.target.value })}
-              />
-            </Field>
-          </div>
+        {value.identifiantFiscal && (
+          <Field label="Identifiant fiscal">
+            <Input value={value.identifiantFiscal} readOnly className="bg-gray-50 text-gray-600 font-mono text-sm" />
+          </Field>
         )}
       </Section>
 
+      {/* Locataire */}
       <Section icon={<User size={18} />} title="Locataire">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Prénom">
@@ -176,6 +187,7 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         </Field>
       </Section>
 
+      {/* Électricité */}
       <Section icon={<Zap size={18} />} title="Électricité">
         <Field label="N° compteur (PDL)" hint="Référence de 14 chiffres sur votre facture">
           <Input
@@ -205,6 +217,7 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         </div>
       </Section>
 
+      {/* Eau */}
       <Section icon={<Droplets size={18} />} title="Eau">
         <Field label="N° compteur eau">
           <Input
@@ -223,6 +236,7 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         </Field>
       </Section>
 
+      {/* Clés */}
       <Section icon={<Key size={18} />} title="Remise des clés">
         <div className="space-y-2">
           {value.cles.map((cle, i) => (
@@ -231,9 +245,14 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         </div>
       </Section>
 
-      <Button className="w-full" size="lg" onClick={onNext} disabled={!isValid}>
-        Continuer → Pièces
-      </Button>
+      {/* Sticky footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-4 py-3 pb-safe">
+        <div className="max-w-lg mx-auto">
+          <Button className="w-full" size="lg" onClick={onNext} disabled={!isValid}>
+            Continuer → Pièces
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
