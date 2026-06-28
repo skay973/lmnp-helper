@@ -35,6 +35,7 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
       const { data: saved, error: err } = await supabase
         .from('etats_des_lieux')
         .insert([{
+          appartement_id: data.appartementId ?? null,
           infos_generales: data.infosGenerales,
           pieces: data.pieces,
           observations: data.observations,

@@ -80,6 +80,7 @@ export interface InfosGenerales {
 
 export interface EtatDesLieux {
   id?: string
+  appartementId?: string
   infosGenerales: InfosGenerales
   pieces: Piece[]
   observations?: string
