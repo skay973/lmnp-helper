@@ -117,7 +117,7 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
           </Field>
         </div>
         {value.bail !== undefined && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
             <Field label="Début du bail">
               <Input
                 type="date"
