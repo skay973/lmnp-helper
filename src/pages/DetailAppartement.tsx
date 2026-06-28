@@ -3,11 +3,13 @@ import { supabase } from '@/lib/supabase'
 import { type Appartement } from '@/types/appartement'
 import { type LocataireAvecStatut } from '@/types/locataire'
 import { type EtatDesLieuxResume } from '@/types/appartement'
+import { type EtatDesLieux } from '@/types/etatDesLieux'
 import { Button } from '@/components/ui/button'
 import { LocataireFormModal } from '@/components/LocataireFormModal'
+import { generateEDLPdf } from '@/lib/generatePDF'
 import {
   ChevronLeft, UserPlus, ArrowDownToLine, ArrowUpFromLine,
-  Loader2, FileText, Mail, Phone, User, CalendarDays
+  Loader2, Mail, Phone, User, CalendarDays, Download
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +24,32 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
   const [edls, setEdls] = useState<EtatDesLieuxResume[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const handleDownloadPdf = async (edlId: string) => {
+    setDownloadingId(edlId)
+    const { data } = await supabase
+      .from('etats_des_lieux')
+      .select('*')
+      .eq('id', edlId)
+      .single()
+    if (data) {
+      const edl: EtatDesLieux = {
+        id: data.id,
+        appartementId: data.appartement_id,
+        locataireId: data.locataire_id,
+        infosGenerales: data.infos_generales,
+        pieces: data.pieces ?? [],
+        partiesPrivatives: data.parties_privatives ?? {},
+        equipements: data.equipements ?? {},
+        equipementsEnergetiques: data.equipements_energetiques ?? {},
+        observations: data.observations ?? '',
+        createdAt: data.created_at,
+      }
+      await generateEDLPdf(edl)
+    }
+    setDownloadingId(null)
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -209,7 +237,18 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
                           {new Date(edl.infos_generales.dateEtat).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                       </div>
-                      <FileText size={16} className="text-gray-300 shrink-0" />
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadPdf(edl.id)}
+                        disabled={downloadingId === edl.id}
+                        className="p-2 -mr-1 text-gray-400 hover:text-blue-600 touch-manipulation shrink-0 disabled:opacity-50"
+                        title="Télécharger le PDF"
+                      >
+                        {downloadingId === edl.id
+                          ? <Loader2 size={16} className="animate-spin" />
+                          : <Download size={16} />
+                        }
+                      </button>
                     </div>
                   )
                 })}
