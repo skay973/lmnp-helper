@@ -87,8 +87,10 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
 
   useEffect(() => { load() }, [load])
 
+  const today = new Date().toISOString().split('T')[0]
   const actif = locataires.find(l => l.est_actif)
-  const anciens = locataires.filter(l => !l.est_actif)
+  const aVenir = locataires.filter(l => !l.est_actif && !l.a_edl_entree && l.date_entree && l.date_entree > today)
+  const anciens = locataires.filter(l => !l.est_actif && !aVenir.includes(l))
   const entrees = edls.filter(e => e.infos_generales.typeMouvement === 'entree')
   const sorties = edls.filter(e => e.infos_generales.typeMouvement === 'sortie')
 
@@ -184,6 +186,35 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
               </button>
             )}
           </div>
+
+          {/* Locataires à venir */}
+          {aVenir.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-gray-700 text-sm">À venir</h3>
+              {aVenir.map(loc => (
+                <div key={loc.lien_id} className="bg-purple-50 rounded-xl border border-purple-200 p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
+                    <span className="text-purple-600 font-semibold text-sm">{loc.prenom[0]}{loc.nom[0]}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{loc.prenom} {loc.nom}</p>
+                    {loc.date_entree && (
+                      <p className="text-xs text-purple-500">
+                        Entrée prévue le {new Date(loc.date_entree).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onStartEDL(loc, 'entree')}
+                    className="text-xs text-purple-600 font-semibold touch-manipulation px-2 py-1 rounded-lg border border-purple-300 bg-white"
+                  >
+                    EDL entrée
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Anciens locataires */}
           {anciens.length > 0 && (

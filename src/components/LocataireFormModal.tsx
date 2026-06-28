@@ -14,6 +14,7 @@ interface Props {
 export function LocataireFormModal({ appartementId, onSuccess, onClose }: Props) {
   const [form, setForm] = useState({ nom: '', prenom: '', email: '', telephone: '', adresse: '' })
   const [dateEntree, setDateEntree] = useState(new Date().toISOString().split('T')[0])
+  const [mode, setMode] = useState<'immediate' | 'a_venir'>('immediate')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,7 +25,6 @@ export function LocataireFormModal({ appartementId, onSuccess, onClose }: Props)
     setSaving(true)
     setError(null)
 
-    // 1. Créer le locataire
     const { data: loc, error: e1 } = await supabase
       .from('locataires')
       .insert([{ nom: form.nom, prenom: form.prenom, email: form.email || null, telephone: form.telephone || null, adresse: form.adresse || null }])
@@ -33,17 +33,23 @@ export function LocataireFormModal({ appartementId, onSuccess, onClose }: Props)
 
     if (e1 || !loc) { setError('Erreur lors de la création.'); setSaving(false); return }
 
-    // 2. Désactiver l'ancien locataire actif
-    await supabase
-      .from('appartement_locataires')
-      .update({ est_actif: false, date_sortie: dateEntree })
-      .eq('appartement_id', appartementId)
-      .eq('est_actif', true)
+    if (mode === 'immediate') {
+      // Désactiver l'ancien locataire actif
+      await supabase
+        .from('appartement_locataires')
+        .update({ est_actif: false, date_sortie: dateEntree })
+        .eq('appartement_id', appartementId)
+        .eq('est_actif', true)
+    }
 
-    // 3. Lier le nouveau
     const { error: e2 } = await supabase
       .from('appartement_locataires')
-      .insert([{ appartement_id: appartementId, locataire_id: loc.id, date_entree: dateEntree || null, est_actif: true }])
+      .insert([{
+        appartement_id: appartementId,
+        locataire_id: loc.id,
+        date_entree: dateEntree || null,
+        est_actif: mode === 'immediate',
+      }])
 
     if (e2) { setError('Erreur lors de l\'assignation.'); setSaving(false); return }
 
@@ -61,6 +67,27 @@ export function LocataireFormModal({ appartementId, onSuccess, onClose }: Props)
         </div>
 
         <div className="px-6 py-4 space-y-4">
+
+          {/* Mode d'entrée */}
+          <div className="flex gap-2">
+            {(['immediate', 'a_venir'] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`flex-1 h-11 rounded-xl border-2 text-sm font-semibold transition-all touch-manipulation ${
+                  mode === m
+                    ? m === 'immediate'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-purple-400 bg-purple-50 text-purple-700'
+                    : 'border-gray-200 text-gray-400 bg-white'
+                }`}
+              >
+                {m === 'immediate' ? 'Entrée immédiate' : 'À venir'}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700">Prénom *</label>
@@ -80,7 +107,9 @@ export function LocataireFormModal({ appartementId, onSuccess, onClose }: Props)
             <Input type="tel" inputMode="tel" placeholder="06 00 00 00 00" value={form.telephone} onChange={e => set('telephone', e.target.value)} />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Date d'entrée</label>
+            <label className="text-sm font-medium text-gray-700">
+              {mode === 'immediate' ? 'Date d\'entrée' : 'Date d\'entrée prévue'}
+            </label>
             <Input type="date" value={dateEntree} onChange={e => setDateEntree(e.target.value)} />
           </div>
 
@@ -93,7 +122,7 @@ export function LocataireFormModal({ appartementId, onSuccess, onClose }: Props)
             disabled={!form.nom.trim() || !form.prenom.trim() || saving}
           >
             {saving && <Loader2 size={18} className="animate-spin" />}
-            {saving ? 'Enregistrement...' : 'Enregistrer le locataire'}
+            {saving ? 'Enregistrement...' : mode === 'immediate' ? 'Enregistrer le locataire' : 'Préparer l\'arrivée'}
           </Button>
         </div>
       </div>
