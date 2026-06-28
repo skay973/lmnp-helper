@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { type Appartement } from '@/types/appartement'
 import { type LocataireAvecStatut } from '@/types/locataire'
@@ -10,9 +10,55 @@ import { generateEDLPdf } from '@/lib/generatePDF'
 import { generateInventairePdf } from '@/lib/generateInventairePdf'
 import {
   ChevronLeft, UserPlus, ArrowDownToLine, ArrowUpFromLine,
-  Loader2, Mail, Phone, User, CalendarDays, Download
+  Loader2, Mail, Phone, User, CalendarDays, FileText, Package, Camera, X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface PieceWithPhotos { nom: string; photos: string[] }
+
+function PhotoThumb({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    supabase.storage.from('edl-photos').createSignedUrl(path, 3600)
+      .then(({ data }) => { if (data) setUrl(data.signedUrl) })
+  }, [path])
+  if (!url) return <div className="aspect-square bg-gray-100 rounded-xl animate-pulse" />
+  return (
+    <div className="aspect-square rounded-xl overflow-hidden border border-gray-200">
+      <img src={url} alt="" className="w-full h-full object-cover" />
+    </div>
+  )
+}
+
+function PhotoViewer({ pieces, onClose }: { pieces: PieceWithPhotos[]; onClose: () => void }) {
+  const withPhotos = pieces.filter(p => p.photos.length > 0)
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-900 text-base">Photos de l'état des lieux</h3>
+          <button type="button" onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-600 touch-manipulation">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-4 py-4 space-y-5">
+          {withPhotos.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">Aucune photo pour cet état des lieux</p>
+          ) : withPhotos.map(piece => (
+            <div key={piece.nom} className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">{piece.nom}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {piece.photos.map(path => <PhotoThumb key={path} path={path} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
 
 interface Props {
   appartement: Appartement
@@ -28,6 +74,8 @@ export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionIn
   const [showForm, setShowForm] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [downloadingInventaireId, setDownloadingInventaireId] = useState<string | null>(null)
+  const [loadingPhotosId, setLoadingPhotosId] = useState<string | null>(null)
+  const [viewingPhotos, setViewingPhotos] = useState<PieceWithPhotos[] | null>(null)
 
   const buildEdl = (data: any): EtatDesLieux => ({
     id: data.id,
@@ -63,6 +111,19 @@ export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionIn
       .single()
     if (data) await generateInventairePdf(buildEdl(data))
     setDownloadingInventaireId(null)
+  }
+
+  const handleViewPhotos = async (edlId: string) => {
+    setLoadingPhotosId(edlId)
+    const { data } = await supabase.from('etats_des_lieux').select('pieces').eq('id', edlId).single()
+    if (data) {
+      const pieces: PieceWithPhotos[] = (data.pieces ?? []).map((p: any) => ({
+        nom: p.nom,
+        photos: p.photos ?? [],
+      }))
+      setViewingPhotos(pieces)
+    }
+    setLoadingPhotosId(null)
   }
 
   const load = useCallback(async () => {
@@ -299,19 +360,31 @@ export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionIn
                       >
                         {downloadingId === edl.id
                           ? <Loader2 size={16} className="animate-spin" />
-                          : <Download size={16} />
+                          : <FileText size={16} />
                         }
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDownloadInventairePdf(edl.id)}
                         disabled={downloadingInventaireId === edl.id}
-                        className="p-2 -mr-1 text-gray-400 hover:text-purple-600 touch-manipulation shrink-0 disabled:opacity-50"
+                        className="p-2 text-gray-400 hover:text-purple-600 touch-manipulation shrink-0 disabled:opacity-50"
                         title="Télécharger l'inventaire PDF"
                       >
                         {downloadingInventaireId === edl.id
                           ? <Loader2 size={16} className="animate-spin" />
-                          : <Download size={16} className="opacity-60" />
+                          : <Package size={16} />
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleViewPhotos(edl.id)}
+                        disabled={loadingPhotosId === edl.id}
+                        className="p-2 -mr-1 text-gray-400 hover:text-blue-600 touch-manipulation shrink-0 disabled:opacity-50"
+                        title="Voir les photos"
+                      >
+                        {loadingPhotosId === edl.id
+                          ? <Loader2 size={16} className="animate-spin" />
+                          : <Camera size={16} />
                         }
                       </button>
                     </div>
@@ -320,6 +393,10 @@ export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionIn
             </div>
           )}
         </>
+      )}
+
+      {viewingPhotos && (
+        <PhotoViewer pieces={viewingPhotos} onClose={() => setViewingPhotos(null)} />
       )}
 
       {showForm && (
