@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { EtatDesLieux } from '@/types/etatDesLieux'
-import { INVENTAIRE_ETAT_LABELS } from '@/types/inventaire'
+import { INVENTAIRE_ETAT_LABELS, ETAT_PHYSIQUE_LABELS } from '@/types/inventaire'
 
 function fmtDate(d?: string) {
   if (!d) return '_________________'
@@ -10,7 +10,12 @@ function fmtDate(d?: string) {
   return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function etatLabel(etat?: string): string {
+function etatDeclareLabel(etat?: string): string {
+  if (!etat) return ''
+  return ETAT_PHYSIQUE_LABELS[etat as keyof typeof ETAT_PHYSIQUE_LABELS] ?? etat
+}
+
+function etatAccordLabel(etat?: string): string {
   if (!etat) return ''
   return INVENTAIRE_ETAT_LABELS[etat as keyof typeof INVENTAIRE_ETAT_LABELS] ?? etat
 }
@@ -81,7 +86,7 @@ export async function generateInventairePdf(data: EtatDesLieux): Promise<void> {
   doc.setFont('helvetica', 'bold').setFontSize(8)
   doc.text('Légende :', margin, y)
   doc.setFont('helvetica', 'normal')
-  doc.text("D'accord  ·  D'accord avec observations  ·  Pas d'accord", margin + 20, y)
+  doc.text('Neuf  ·  Très bon  ·  Bon état  ·  Usagé  ·  Mauvais', margin + 20, y)
   y += 8
 
   // ─── TABLEAUX PAR SECTION ─────────────────────────────────────────────────────
@@ -91,12 +96,14 @@ export async function generateInventairePdf(data: EtatDesLieux): Promise<void> {
     h2(section)
 
     const rows = items.map(item => {
-      const obs = item.observations || item.noteInitiale || ''
+      const etatCol = etatDeclareLabel(item.etatDeclare) || item.noteInitiale || ''
+      const accordCol = etatAccordLabel(item.etatEntree)
+      const obs = item.observations || ''
       return [
         item.designation,
         item.quantite ?? '',
-        etatLabel(item.etatEntree),
-        '',
+        etatCol,
+        accordCol,
         obs,
       ]
     })
@@ -106,7 +113,7 @@ export async function generateInventairePdf(data: EtatDesLieux): Promise<void> {
       margin: { left: margin, right: margin },
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [235, 240, 248], textColor: 20, fontStyle: 'bold', fontSize: 8 },
-      head: [['Désignation', 'Qté', 'État entrée', 'État sortie', 'Observations']],
+      head: [['Désignation', 'Qté', 'État déclaré', 'Accord locataire', 'Observations']],
       body: rows,
       columnStyles: {
         0: { cellWidth: 62 },

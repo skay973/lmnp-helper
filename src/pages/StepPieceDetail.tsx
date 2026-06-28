@@ -1,17 +1,20 @@
 import { ElementsList } from '@/components/ElementsList'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { PiecePhotos } from '@/components/PiecePhotos'
 import { type Piece } from '@/types/etatDesLieux'
 import { ChevronLeft, CheckCircle2 } from 'lucide-react'
 import { getPieceCompletion } from '@/types/etatDesLieux'
 
 interface Props {
   piece: Piece
+  userId: string
   onChange: (piece: Piece) => void
+  onSavePiece?: (piece: Piece) => void
   onBack: () => void
 }
 
-export function StepPieceDetail({ piece, onChange, onBack }: Props) {
+export function StepPieceDetail({ piece, userId, onChange, onSavePiece, onBack }: Props) {
   const { completed, total } = getPieceCompletion(piece)
   const isComplete = completed === total && total > 0
 
@@ -38,6 +41,13 @@ export function StepPieceDetail({ piece, onChange, onBack }: Props) {
       <ElementsList
         elements={piece.elements}
         onChange={elements => onChange({ ...piece, elements })}
+        onStructureChange={elements => onSavePiece?.({ ...piece, elements })}
+      />
+
+      <PiecePhotos
+        photos={piece.photos ?? []}
+        userId={userId}
+        onChange={photos => onChange({ ...piece, photos })}
       />
 
       <div className="space-y-1.5 pt-1">

@@ -7,6 +7,7 @@ import { useState } from 'react'
 interface Props {
   pieces: Piece[]
   onChange: (pieces: Piece[]) => void
+  onSavePieces: (pieces: Piece[]) => Promise<void>
   onNext: () => void
   onBack: () => void
   onEditPiece: (index: number) => void
@@ -15,17 +16,23 @@ interface Props {
 const TYPES_COMMUNS: TypePiece[] = ['entree', 'salon', 'chambre', 'cuisine', 'salle_de_bain', 'wc', 'couloir']
 const TYPES_AUTRES: TypePiece[] = ['salle_a_manger', 'bureau', 'balcon', 'cave', 'garage', 'autre']
 
-export function StepPieces({ pieces, onChange, onNext, onBack, onEditPiece }: Props) {
+export function StepPieces({ pieces, onChange, onSavePieces, onNext, onBack, onEditPiece }: Props) {
   const [showModal, setShowModal] = useState(false)
 
   const addPiece = (type: TypePiece) => {
     const count = pieces.filter(p => p.type === type).length
     const nom = count === 0 ? TYPE_PIECE_LABELS[type] : `${TYPE_PIECE_LABELS[type]} ${count + 1}`
-    onChange([...pieces, createPiece(type, nom)])
+    const next = [...pieces, createPiece(type, nom)]
+    onChange(next)
+    onSavePieces(next)
     setShowModal(false)
   }
 
-  const removePiece = (index: number) => onChange(pieces.filter((_, i) => i !== index))
+  const removePiece = (index: number) => {
+    const next = pieces.filter((_, i) => i !== index)
+    onChange(next)
+    onSavePieces(next)
+  }
 
   const totalCompleted = pieces.filter(p => {
     const { completed, total } = getPieceCompletion(p)
@@ -81,15 +88,18 @@ export function StepPieces({ pieces, onChange, onNext, onBack, onEditPiece }: Pr
         })}
       </div>
 
-      <Button variant="outline" className="w-full border-dashed" onClick={() => setShowModal(true)}>
-        <Plus size={18} />
-        Ajouter une pièce
-      </Button>
+      <button
+        type="button"
+        onClick={() => setShowModal(true)}
+        className="w-full flex items-center justify-center gap-1.5 py-3 text-xs text-blue-500 font-medium hover:bg-blue-50 transition-colors touch-manipulation border border-dashed border-blue-200 rounded-xl"
+      >
+        <Plus size={14} />Ajouter une pièce
+      </button>
 
       <div className="flex gap-3 pt-2">
         <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
         <Button onClick={onNext} className="flex-1" disabled={pieces.length === 0}>
-          Récapitulatif →
+          Autres →
         </Button>
       </div>
 

@@ -18,9 +18,10 @@ interface Props {
   appartement: Appartement
   onBack: () => void
   onStartEDL: (locataire: LocataireAvecStatut, type: 'entree' | 'sortie') => void
+  onGestionInventaire: () => void
 }
 
-export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
+export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionInventaire }: Props) {
   const [locataires, setLocataires] = useState<LocataireAvecStatut[]>([])
   const [edls, setEdls] = useState<EtatDesLieuxResume[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,12 +117,20 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
 
       {/* Infos appartement */}
       <div className="bg-blue-50 rounded-2xl p-4 space-y-0.5">
-        <h2 className="text-lg font-bold text-blue-900">{appartement.nom}</h2>
-        <p className="text-sm text-blue-700">{appartement.adresse}</p>
-        <p className="text-sm text-blue-600">{appartement.code_postal} {appartement.ville}</p>
-        {appartement.config?.surface && (
-          <p className="text-xs text-blue-500 pt-1">{appartement.config.surface} m² · {appartement.config.nb_pieces} pièces</p>
-        )}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-blue-900">{appartement.nom}</h2>
+            <p className="text-sm text-blue-700">{appartement.adresse}</p>
+            <p className="text-sm text-blue-600">{appartement.code_postal} {appartement.ville}</p>
+            {appartement.config?.surface && (
+              <p className="text-xs text-blue-500 pt-1">{appartement.config.surface} m² · {appartement.config.nb_pieces} pièces</p>
+            )}
+          </div>
+          <button type="button" onClick={onGestionInventaire}
+            className="shrink-0 text-xs text-blue-600 font-semibold border border-blue-300 bg-white rounded-lg px-3 py-1.5 touch-manipulation hover:bg-blue-50 transition-colors">
+            Inventaire
+          </button>
+        </div>
       </div>
 
       {loading ? (

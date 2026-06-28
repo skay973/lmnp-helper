@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { StepInfosGenerales } from './pages/StepInfosGenerales'
 import { StepPieces } from './pages/StepPieces'
 import { StepPieceDetail } from './pages/StepPieceDetail'
@@ -7,18 +7,21 @@ import { StepInventaire } from './pages/StepInventaire'
 import { StepRecapitulatif } from './pages/StepRecapitulatif'
 import { ListeAppartements } from './pages/ListeAppartements'
 import { DetailAppartement } from './pages/DetailAppartement'
+import { GestionInventaire } from './pages/GestionInventaire'
 import { LoginPage } from './pages/LoginPage'
 import { useAuth } from './contexts/AuthContext'
 import { type EtatDesLieux, type InfosGenerales, type Piece, type TypePiece, createPiece, TYPE_PIECE_LABELS } from './types/etatDesLieux'
-import { type Appartement } from './types/appartement'
+import { type Appartement, type PieceStock } from './types/appartement'
 import { type LocataireAvecStatut } from './types/locataire'
-import { createInventaire } from './types/inventaire'
+import { syncInventaireWithPieces } from './types/inventaire'
 import { CheckCircle2, LogOut, Loader2, Building2, ChevronLeft, Download } from 'lucide-react'
 import { generateEDLPdf } from './lib/generatePDF'
 import { generateInventairePdf } from './lib/generateInventairePdf'
 import { Button } from './components/ui/button'
+import { supabase } from './lib/supabase'
+import type { Inventaire } from './types/inventaire'
 
-type Screen = 'appartements' | 'detail_appt' | 'edl_form' | 'done'
+type Screen = 'appartements' | 'detail_appt' | 'inventaire_appt' | 'edl_form' | 'done'
 type EDLStep = 'infos' | 'pieces' | 'piece_detail' | 'complements' | 'inventaire' | 'recap'
 
 const STEP_LABELS = ['Infos', 'Pièces', 'Autres', 'Inventaire', 'Récap']
@@ -49,9 +52,18 @@ function makeInfos(appt: Appartement, locataire: LocataireAvecStatut, type: 'ent
 }
 
 function makePieces(appt: Appartement): Piece[] {
-  const types = appt.config?.pieces_defaut ?? []
+  if (appt.pieces?.length) {
+    return appt.pieces.map(({ type, nom, elementKeys }) => {
+      const piece = createPiece(type, nom)
+      if (elementKeys?.length) {
+        // Restore custom element list, preserving order
+        piece.elements = Object.fromEntries(elementKeys.map(k => [k, {}]))
+      }
+      return piece
+    })
+  }
   const counts: Record<string, number> = {}
-  return types.map(t => {
+  return (appt.config?.pieces_defaut ?? []).map(t => {
     const type = t as TypePiece
     counts[type] = (counts[type] ?? 0) + 1
     const nom = counts[type] === 1 ? TYPE_PIECE_LABELS[type] : `${TYPE_PIECE_LABELS[type]} ${counts[type]}`
@@ -68,7 +80,7 @@ function makeEDL(appt: Appartement, locataire: LocataireAvecStatut, type: 'entre
     locataireId: locataire.id,
     partiesPrivatives: Object.fromEntries(
       (cfg.equipements_communs ?? [])
-        .filter(e => e.toLowerCase().includes('parking') || e.toLowerCase().includes('terrasse') || e.toLowerCase().includes('cave') || e.toLowerCase().includes('garage'))
+        .filter(e => e.toLowerCase().includes('parking') || e.toLowerCase().includes('cave') || e.toLowerCase().includes('garage'))
         .map(e => [e, {}])
     ),
     equipements: Object.fromEntries(
@@ -78,7 +90,13 @@ function makeEDL(appt: Appartement, locataire: LocataireAvecStatut, type: 'entre
     ),
     equipementsEnergetiques: {},
     observations: '',
-    inventaire: createInventaire(),
+    inventaire: syncInventaireWithPieces(
+      makePieces(appt),
+      (appt.inventaire ?? []).map(p => ({
+        ...p,
+        items: p.items.map(({ etatEntree: _unused, ...item }) => item),
+      }))
+    ),
   }
 }
 
@@ -112,6 +130,34 @@ export default function App() {
     setScreen('edl_form')
   }
 
+  const handleSavePieces = useCallback(async (pieces: Piece[]) => {
+    if (!selectedAppt) return
+    const stock: PieceStock[] = pieces.map(({ type, nom, elements }) => ({
+      type, nom, elementKeys: Object.keys(elements),
+    }))
+    // Sync inventory sections to match updated pieces
+    const currentInv = etat?.inventaire ?? selectedAppt.inventaire ?? []
+    const syncedInv = syncInventaireWithPieces(pieces, currentInv)
+    const stockInv = syncedInv.map(p => ({
+      ...p,
+      items: p.items.map(({ etatEntree: _unused, ...item }) => item),
+    }))
+    await supabase.from('appartements').update({ pieces: stock, inventaire: stockInv }).eq('id', selectedAppt.id)
+    setSelectedAppt(a => a ? { ...a, pieces: stock, inventaire: stockInv } : a)
+    setEtat(e => e ? { ...e, inventaire: syncedInv } : e)
+  }, [selectedAppt, etat])
+
+  const handleSaveInventaire = useCallback(async (inventaire: Inventaire) => {
+    if (!selectedAppt) return
+    // Strip etatEntree before saving to apartment — it belongs to the EDL, not the stock
+    const stock = inventaire.map(p => ({
+      ...p,
+      items: p.items.map(({ etatEntree: _unused, ...item }) => item),
+    }))
+    await supabase.from('appartements').update({ inventaire: stock }).eq('id', selectedAppt.id)
+    setSelectedAppt(a => a ? { ...a, inventaire: stock } : a)
+  }, [selectedAppt])
+
   const handleDownloadEdlPdf = async (data: EtatDesLieux) => {
     setGeneratingPdf(true)
     await generateEDLPdf(data)
@@ -127,6 +173,7 @@ export default function App() {
   const headerTitle = () => {
     if (screen === 'appartements') return 'Mes appartements'
     if (screen === 'detail_appt') return selectedAppt?.nom ?? ''
+    if (screen === 'inventaire_appt') return `Inventaire — ${selectedAppt?.nom ?? ''}`
     if (screen === 'done') return 'Sauvegardé'
     if (edlStep === 'piece_detail' && editingPieceIndex !== null) return etat?.pieces[editingPieceIndex]?.nom ?? ''
     return selectedLocataire ? `${selectedLocataire.prenom} ${selectedLocataire.nom}` : 'Nouvel état des lieux'
@@ -178,6 +225,24 @@ export default function App() {
             appartement={selectedAppt}
             onBack={() => setScreen('appartements')}
             onStartEDL={(loc, type) => startEDL(selectedAppt, loc, type)}
+            onGestionInventaire={() => setScreen('inventaire_appt')}
+          />
+        )}
+
+        {screen === 'inventaire_appt' && selectedAppt && (
+          <GestionInventaire
+            inventaire={selectedAppt.inventaire?.length
+              ? selectedAppt.inventaire
+              : syncInventaireWithPieces(makePieces(selectedAppt), [])}
+            onSave={async (inventaire) => {
+              const stock = inventaire.map(p => ({
+                ...p,
+                items: p.items.map(({ etatEntree: _unused, ...item }) => item),
+              }))
+              await supabase.from('appartements').update({ inventaire: stock }).eq('id', selectedAppt.id)
+              setSelectedAppt(a => a ? { ...a, inventaire: stock } : a)
+            }}
+            onBack={() => setScreen('detail_appt')}
           />
         )}
 
@@ -225,6 +290,7 @@ export default function App() {
               <StepPieces
                 pieces={etat.pieces}
                 onChange={setPieces}
+                onSavePieces={handleSavePieces}
                 onNext={() => setEdlStep('complements')}
                 onBack={() => setEdlStep('infos')}
                 onEditPiece={index => { setEditingPieceIndex(index); setEdlStep('piece_detail') }}
@@ -233,7 +299,13 @@ export default function App() {
             {edlStep === 'piece_detail' && editingPieceIndex !== null && (
               <StepPieceDetail
                 piece={etat.pieces[editingPieceIndex]}
+                userId={user.id}
                 onChange={piece => setPiece(editingPieceIndex, piece)}
+                onSavePiece={piece => {
+                  const updated = [...etat.pieces]
+                  updated[editingPieceIndex] = piece
+                  handleSavePieces(updated)
+                }}
                 onBack={() => { setEditingPieceIndex(null); setEdlStep('pieces') }}
               />
             )}
@@ -255,6 +327,7 @@ export default function App() {
               <StepInventaire
                 value={etat.inventaire ?? []}
                 onChange={inventaire => setEtat(e => e ? { ...e, inventaire } : e)}
+                onSaveInventaire={handleSaveInventaire}
                 onNext={() => setEdlStep('recap')}
                 onBack={() => setEdlStep('complements')}
               />

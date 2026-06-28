@@ -51,7 +51,7 @@ function ElementCard({ label, value, onChange }: { label: string; value: Element
       </div>
       <EtatBtns value={value.etat} onChange={etat => { onChange({ ...value, etat }); if (etat === 'mauvais') setShowComment(true) }} />
       {(showComment || value.commentaire) && (
-        <Textarea placeholder="Précisions..." value={value.commentaire ?? ''} onChange={e => onChange({ ...value, commentaire: e.target.value })} className="text-sm min-h-[56px] bg-gray-50" />
+        <Textarea placeholder="Précisions..." value={value.commentaire ?? ''} onChange={e => onChange({ ...value, commentaire: e.target.value })} className="w-full text-sm min-h-[56px] bg-gray-50 resize-none" />
       )}
     </div>
   )
@@ -85,7 +85,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
     <div className="space-y-6 pb-8">
 
       {/* Parties privatives */}
-      <Section title="V. Parties privatives">
+      <Section title="Parties privatives">
         {Object.entries(partiesPrivatives).map(([key, val]) => (
           <ElementCard key={key} label={key} value={val}
             onChange={v => onChangePartiesPrivatives({ ...partiesPrivatives, [key]: v })} />
@@ -93,7 +93,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
       </Section>
 
       {/* Équipements et aménagements */}
-      <Section title="VI. Équipements et aménagements">
+      <Section title="Équipements et aménagements">
         {Object.entries(equipements).map(([key, val]) => (
           <ElementCard key={key} label={key} value={val}
             onChange={v => onChangeEquipements({ ...equipements, [key]: v })} />
@@ -101,8 +101,8 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
       </Section>
 
       {/* Équipements énergétiques */}
-      <Section title="III. Équipements énergétiques">
-        <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200">
+      <Section title="Équipements énergétiques">
+        <div className="bg-white rounded-xl p-4 space-y-4 border border-gray-200">
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-3">Ballon d'eau chaude (ECS)</p>
             {energetiqueEtatBtns('ballon_etat', 'État général')}
@@ -129,7 +129,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
       </Section>
 
       {/* Observations globales */}
-      <Section title="VIII. Observations générales">
+      <Section title="Observations générales">
         <Textarea
           placeholder="Observations générales sur l'état du logement..."
           value={observations}
@@ -140,7 +140,7 @@ export function StepComplements({ partiesPrivatives, equipements, equipementsEne
 
       <div className="flex gap-3 pt-2">
         <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
-        <Button onClick={onNext} className="flex-1">Récapitulatif →</Button>
+        <Button onClick={onNext} className="flex-1">Inventaire →</Button>
       </div>
     </div>
   )

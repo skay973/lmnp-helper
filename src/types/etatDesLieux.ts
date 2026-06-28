@@ -13,6 +13,7 @@ export interface Piece {
   type: TypePiece
   elements: Record<string, ElementEtat>
   commentaireGeneral?: string
+  photos?: string[]
 }
 
 export type TypePiece =

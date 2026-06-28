@@ -1,12 +1,22 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { EtatDesLieux } from '@/types/etatDesLieux'
+import { supabase } from './supabase'
 
 const ETAT_LABEL: Record<string, string> = {
   bon: 'Bon état',
   usage: 'Usage normal',
   mauvais: 'Mauvais état',
   non_applicable: 'N/A',
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
 }
 
 function fmtDate(d?: string) {
@@ -267,6 +277,33 @@ export async function generateEDLPdf(data: EtatDesLieux): Promise<void> {
       columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: contentW - 90 } },
     })
     y = (doc as any).lastAutoTable.finalY + 4
+
+    // Photos de la pièce
+    if (piece.photos && piece.photos.length > 0) {
+      const photoW = 85
+      const photoH = 64
+      const gap = 10
+      for (let i = 0; i < piece.photos.length; i += 2) {
+        checkY(photoH + 6)
+        const batch = piece.photos.slice(i, i + 2)
+        const dataUrls = await Promise.all(batch.map(async path => {
+          try {
+            const { data, error } = await supabase.storage.from('edl-photos').download(path)
+            if (error || !data) return null
+            return await blobToDataUrl(data)
+          } catch {
+            return null
+          }
+        }))
+        for (let j = 0; j < batch.length; j++) {
+          const dataUrl = dataUrls[j]
+          if (!dataUrl) continue
+          const x = margin + j * (photoW + gap)
+          doc.addImage(dataUrl, 'JPEG', x, y, photoW, photoH)
+        }
+        y += photoH + 4
+      }
+    }
 
     if (piece.commentaireGeneral) {
       checkY(8)

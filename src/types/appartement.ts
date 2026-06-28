@@ -1,3 +1,12 @@
+import type { Inventaire } from './inventaire'
+import type { TypePiece } from './etatDesLieux'
+
+export interface PieceStock {
+  type: TypePiece
+  nom: string
+  elementKeys?: string[]
+}
+
 export interface CleItem {
   type: string
   nombre: number
@@ -31,6 +40,8 @@ export interface Appartement {
   code_postal: string
   ville: string
   config: AppartementConfig
+  inventaire: Inventaire
+  pieces: PieceStock[]
   created_at: string
 }
 
