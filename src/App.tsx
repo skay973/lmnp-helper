@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage'
 import { useAuth } from './contexts/AuthContext'
 import { type EtatDesLieux, type InfosGenerales, type Piece, type TypePiece, createPiece, TYPE_PIECE_LABELS } from './types/etatDesLieux'
 import { type Appartement } from './types/appartement'
+import { type LocataireAvecStatut } from './types/locataire'
 import { CheckCircle2, LogOut, Loader2, Building2, ChevronLeft } from 'lucide-react'
 
 type Screen = 'appartements' | 'detail_appt' | 'edl_form' | 'done'
@@ -17,22 +18,30 @@ type EDLStep = 'infos' | 'pieces' | 'piece_detail' | 'recap'
 const STEP_LABELS = ['Infos', 'Pièces', 'Récap']
 const STEP_INDEX: Record<EDLStep, number> = { infos: 0, pieces: 1, piece_detail: 1, recap: 2 }
 
-function makeInfosFromAppt(appt: Appartement): InfosGenerales {
+function makeInfos(appt: Appartement, locataire: LocataireAvecStatut, type: 'entree' | 'sortie'): InfosGenerales {
   const cfg = appt.config
   return {
     adresse: appt.adresse,
     ville: appt.ville,
     codePostal: appt.code_postal,
     dateEtat: new Date().toISOString().split('T')[0],
-    typeMouvement: 'entree',
-    locataire: { nom: '', prenom: '' },
+    typeMouvement: type,
+    locataire: {
+      nom: locataire.nom,
+      prenom: locataire.prenom,
+      email: locataire.email,
+      telephone: locataire.telephone,
+    },
     bailleur: {
       nom: cfg.bailleur?.nom ?? '',
       prenom: cfg.bailleur?.prenom ?? '',
       email: cfg.bailleur?.email,
       adresse: cfg.bailleur?.adresse,
     },
-    bail: { dateDebut: '', duree: '1 an' },
+    bail: {
+      dateDebut: locataire.date_entree ?? '',
+      duree: '1 an',
+    },
     releveCompteurs: {},
     has_gaz: cfg.has_gaz ?? false,
     cles: cfg.cles_defaut ?? [],
@@ -42,7 +51,7 @@ function makeInfosFromAppt(appt: Appartement): InfosGenerales {
   }
 }
 
-function makePiecesFromAppt(appt: Appartement): Piece[] {
+function makePieces(appt: Appartement): Piece[] {
   const types = appt.config?.pieces_defaut ?? []
   const counts: Record<string, number> = {}
   return types.map(t => {
@@ -58,6 +67,7 @@ export default function App() {
 
   const [screen, setScreen] = useState<Screen>('appartements')
   const [selectedAppt, setSelectedAppt] = useState<Appartement | null>(null)
+  const [selectedLocataire, setSelectedLocataire] = useState<LocataireAvecStatut | null>(null)
   const [edlStep, setEdlStep] = useState<EDLStep>('infos')
   const [editingPieceIndex, setEditingPieceIndex] = useState<number | null>(null)
   const [etat, setEtat] = useState<EtatDesLieux>({ infosGenerales: {} as InfosGenerales, pieces: [] })
@@ -70,11 +80,13 @@ export default function App() {
     setEtat(e => ({ ...e, pieces }))
   }
 
-  const startNewEDL = (appt: Appartement) => {
+  const startEDL = (appt: Appartement, locataire: LocataireAvecStatut, type: 'entree' | 'sortie') => {
+    setSelectedLocataire(locataire)
     setEtat({
-      infosGenerales: makeInfosFromAppt(appt),
-      pieces: makePiecesFromAppt(appt),
+      infosGenerales: makeInfos(appt, locataire, type),
+      pieces: makePieces(appt),
       appartementId: appt.id,
+      locataireId: locataire.id,
     })
     setEdlStep('infos')
     setScreen('edl_form')
@@ -85,7 +97,7 @@ export default function App() {
     if (screen === 'detail_appt') return selectedAppt?.nom ?? ''
     if (screen === 'done') return 'Sauvegardé'
     if (edlStep === 'piece_detail' && editingPieceIndex !== null) return etat.pieces[editingPieceIndex]?.nom ?? ''
-    return 'Nouvel état des lieux'
+    return selectedLocataire ? `${selectedLocataire.prenom} ${selectedLocataire.nom}` : 'Nouvel état des lieux'
   }
 
   if (loading) {
@@ -104,24 +116,18 @@ export default function App() {
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2 min-w-0">
-              {/* Bouton retour contextuel */}
               {screen === 'edl_form' && edlStep !== 'piece_detail' && (
-                <button
-                  type="button"
-                  onClick={() => setScreen('detail_appt')}
-                  className="p-1 -ml-1 text-blue-600 touch-manipulation shrink-0"
-                >
+                <button type="button" onClick={() => setScreen('detail_appt')}
+                  className="p-1 -ml-1 text-blue-600 touch-manipulation shrink-0">
                   <ChevronLeft size={22} />
                 </button>
               )}
               {screen === 'appartements' && <Building2 size={18} className="text-blue-600 shrink-0" />}
               <h1 className="text-base font-bold text-gray-900 truncate">{headerTitle()}</h1>
             </div>
-            <button
-              onClick={signOut}
+            <button onClick={signOut}
               className="p-2 text-gray-400 hover:text-gray-600 touch-manipulation shrink-0 ml-2"
-              title="Déconnexion"
-            >
+              title="Déconnexion">
               <LogOut size={18} />
             </button>
           </div>
@@ -146,7 +152,6 @@ export default function App() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-4">
-
         {screen === 'appartements' && (
           <ListeAppartements
             onSelect={appt => { setSelectedAppt(appt); setScreen('detail_appt') }}
@@ -157,8 +162,7 @@ export default function App() {
           <DetailAppartement
             appartement={selectedAppt}
             onBack={() => setScreen('appartements')}
-            onNewEDL={() => startNewEDL(selectedAppt)}
-            onOpenEDL={_id => { /* TODO: vue détail EDL */ }}
+            onStartEDL={(loc, type) => startEDL(selectedAppt, loc, type)}
           />
         )}
 
@@ -168,10 +172,8 @@ export default function App() {
               <CheckCircle2 size={64} className="text-green-500 mx-auto" />
               <h2 className="text-2xl font-bold text-gray-900">État des lieux sauvegardé !</h2>
               <p className="text-gray-500 text-sm">Réf. : {savedId}</p>
-              <button
-                onClick={() => { setScreen('detail_appt'); setSavedId(null) }}
-                className="text-blue-600 text-sm font-medium underline touch-manipulation"
-              >
+              <button onClick={() => { setScreen('detail_appt'); setSavedId(null) }}
+                className="text-blue-600 text-sm font-medium underline touch-manipulation">
                 Retour à l'appartement
               </button>
             </div>

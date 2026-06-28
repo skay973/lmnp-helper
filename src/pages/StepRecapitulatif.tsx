@@ -29,6 +29,7 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
         .from('etats_des_lieux')
         .insert([{
           appartement_id: data.appartementId ?? null,
+          locataire_id: data.locataireId ?? null,
           infos_generales: data.infosGenerales,
           pieces: data.pieces,
           observations: data.observations,

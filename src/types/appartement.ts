@@ -33,6 +33,7 @@ export interface Appartement {
 export interface EtatDesLieuxResume {
   id: string
   appartement_id: string
+  locataire_id?: string
   created_at: string
   infos_generales: {
     typeMouvement: 'entree' | 'sortie'

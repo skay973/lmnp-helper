@@ -1,137 +1,230 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { type Appartement, type EtatDesLieuxResume } from '@/types/appartement'
+import { type Appartement } from '@/types/appartement'
+import { type LocataireAvecStatut } from '@/types/locataire'
+import { type EtatDesLieuxResume } from '@/types/appartement'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Plus, ArrowDownToLine, ArrowUpFromLine, Loader2, FileText } from 'lucide-react'
+import { LocataireFormModal } from '@/components/LocataireFormModal'
+import {
+  ChevronLeft, UserPlus, ArrowDownToLine, ArrowUpFromLine,
+  Loader2, FileText, Mail, Phone, User, CalendarDays
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
   appartement: Appartement
   onBack: () => void
-  onNewEDL: () => void
-  onOpenEDL: (id: string) => void
+  onStartEDL: (locataire: LocataireAvecStatut, type: 'entree' | 'sortie') => void
 }
 
-export function DetailAppartement({ appartement, onBack, onNewEDL, onOpenEDL }: Props) {
+export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
+  const [locataires, setLocataires] = useState<LocataireAvecStatut[]>([])
   const [edls, setEdls] = useState<EtatDesLieuxResume[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
 
-  useEffect(() => {
-    supabase
-      .from('etats_des_lieux')
-      .select('id, appartement_id, created_at, infos_generales')
-      .eq('appartement_id', appartement.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setEdls((data as EtatDesLieuxResume[]) ?? [])
-        setLoading(false)
-      })
+  const load = useCallback(async () => {
+    setLoading(true)
+    const [{ data: liens }, { data: edlData }] = await Promise.all([
+      supabase
+        .from('appartement_locataires')
+        .select('id, est_actif, date_entree, date_sortie, locataire:locataires(*)')
+        .eq('appartement_id', appartement.id)
+        .order('est_actif', { ascending: false })
+        .order('date_entree', { ascending: false }),
+      supabase
+        .from('etats_des_lieux')
+        .select('id, locataire_id, infos_generales, created_at')
+        .eq('appartement_id', appartement.id)
+        .order('created_at', { ascending: false }),
+    ])
+
+    const edlList = (edlData ?? []) as EtatDesLieuxResume[]
+    setEdls(edlList)
+
+    const locList: LocataireAvecStatut[] = (liens ?? []).map((l: any) => {
+      const edlsForLoc = edlList.filter(e => e.locataire_id === l.locataire.id)
+      return {
+        ...l.locataire,
+        lien_id: l.id,
+        date_entree: l.date_entree,
+        est_actif: l.est_actif,
+        a_edl_entree: edlsForLoc.some(e => e.infos_generales.typeMouvement === 'entree'),
+        a_edl_sortie: edlsForLoc.some(e => e.infos_generales.typeMouvement === 'sortie'),
+      }
+    })
+    setLocataires(locList)
+    setLoading(false)
   }, [appartement.id])
 
+  useEffect(() => { load() }, [load])
+
+  const actif = locataires.find(l => l.est_actif)
+  const anciens = locataires.filter(l => !l.est_actif)
   const entrees = edls.filter(e => e.infos_generales.typeMouvement === 'entree')
   const sorties = edls.filter(e => e.infos_generales.typeMouvement === 'sortie')
 
   return (
     <div className="space-y-5 pb-8">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex items-center gap-1 text-blue-600 text-sm font-medium touch-manipulation -ml-1"
-      >
-        <ChevronLeft size={18} />
-        Mes appartements
+      <button type="button" onClick={onBack}
+        className="flex items-center gap-1 text-blue-600 text-sm font-medium touch-manipulation -ml-1">
+        <ChevronLeft size={18} />Mes appartements
       </button>
 
+      {/* Infos appartement */}
       <div className="bg-blue-50 rounded-2xl p-4 space-y-0.5">
         <h2 className="text-lg font-bold text-blue-900">{appartement.nom}</h2>
         <p className="text-sm text-blue-700">{appartement.adresse}</p>
         <p className="text-sm text-blue-600">{appartement.code_postal} {appartement.ville}</p>
+        {appartement.config?.surface && (
+          <p className="text-xs text-blue-500 pt-1">{appartement.config.surface} m² · {appartement.config.nb_pieces} pièces</p>
+        )}
       </div>
-
-      <Button className="w-full" size="lg" onClick={onNewEDL}>
-        <Plus size={18} />
-        Nouvel état des lieux
-      </Button>
 
       {loading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 size={24} className="animate-spin text-blue-600" />
-        </div>
-      ) : edls.length === 0 ? (
-        <div className="text-center py-10 text-gray-400 border-2 border-dashed rounded-2xl">
-          <FileText size={32} className="mx-auto mb-2 opacity-40" />
-          <p className="text-sm">Aucun état des lieux</p>
-        </div>
+        <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-blue-600" /></div>
       ) : (
-        <div className="space-y-4">
-          {entrees.length > 0 && (
-            <EDLSection
-              titre="États des lieux entrants"
-              icon={<ArrowDownToLine size={16} className="text-green-600" />}
-              edls={entrees}
-              couleur="green"
-              onOpen={onOpenEDL}
-            />
-          )}
-          {sorties.length > 0 && (
-            <EDLSection
-              titre="États des lieux sortants"
-              icon={<ArrowUpFromLine size={16} className="text-orange-500" />}
-              edls={sorties}
-              couleur="orange"
-              onOpen={onOpenEDL}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function EDLSection({
-  titre, icon, edls, couleur, onOpen
-}: {
-  titre: string
-  icon: React.ReactNode
-  edls: EtatDesLieuxResume[]
-  couleur: 'green' | 'orange'
-  onOpen: (id: string) => void
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h3 className="text-sm font-semibold text-gray-700">{titre}</h3>
-        <span className={cn(
-          'text-xs px-2 py-0.5 rounded-full font-medium',
-          couleur === 'green' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-        )}>{edls.length}</span>
-      </div>
-      {edls.map((edl) => {
-        const date = new Date(edl.infos_generales.dateEtat).toLocaleDateString('fr-FR', {
-          day: 'numeric', month: 'long', year: 'numeric'
-        })
-        const { nom, prenom } = edl.infos_generales.locataire
-        return (
-          <button
-            key={edl.id}
-            type="button"
-            onClick={() => onOpen(edl.id)}
-            className={cn(
-              'w-full flex items-center gap-3 p-3.5 rounded-xl border-2 bg-white text-left touch-manipulation transition-colors',
-              couleur === 'green'
-                ? 'border-green-200 hover:border-green-300 hover:bg-green-50/30'
-                : 'border-orange-200 hover:border-orange-300 hover:bg-orange-50/30'
-            )}
-          >
-            <FileText size={18} className={couleur === 'green' ? 'text-green-500 shrink-0' : 'text-orange-400 shrink-0'} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{prenom} {nom}</p>
-              <p className="text-xs text-gray-500">{date}</p>
+        <>
+          {/* Locataire actif */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Locataire actif</h3>
+              <button type="button" onClick={() => setShowForm(true)}
+                className="flex items-center gap-1.5 text-sm text-blue-600 font-medium touch-manipulation">
+                <UserPlus size={16} />{actif ? 'Changer' : 'Ajouter'}
+              </button>
             </div>
-          </button>
-        )
-      })}
+
+            {actif ? (
+              <div className="bg-white rounded-2xl border-2 border-blue-200 p-4 space-y-3">
+                {/* Identité */}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                    <span className="text-blue-700 font-bold text-lg">
+                      {actif.prenom[0]}{actif.nom[0]}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{actif.prenom} {actif.nom}</p>
+                    {actif.date_entree && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <CalendarDays size={11} />
+                        Entrée le {new Date(actif.date_entree).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Coordonnées */}
+                <div className="space-y-1.5">
+                  {actif.email && (
+                    <a href={`mailto:${actif.email}`} className="flex items-center gap-2 text-sm text-gray-600 touch-manipulation">
+                      <Mail size={14} className="text-gray-400 shrink-0" />{actif.email}
+                    </a>
+                  )}
+                  {actif.telephone && (
+                    <a href={`tel:${actif.telephone}`} className="flex items-center gap-2 text-sm text-gray-600 touch-manipulation">
+                      <Phone size={14} className="text-gray-400 shrink-0" />{actif.telephone}
+                    </a>
+                  )}
+                </div>
+
+                {/* Actions EDL */}
+                <div className="pt-1 space-y-2">
+                  {!actif.a_edl_entree && (
+                    <Button className="w-full" onClick={() => onStartEDL(actif, 'entree')}>
+                      <ArrowDownToLine size={17} />
+                      État des lieux d'entrée
+                    </Button>
+                  )}
+                  {actif.a_edl_entree && !actif.a_edl_sortie && (
+                    <Button variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
+                      onClick={() => onStartEDL(actif, 'sortie')}>
+                      <ArrowUpFromLine size={17} />
+                      État des lieux de sortie
+                    </Button>
+                  )}
+                  {actif.a_edl_entree && actif.a_edl_sortie && (
+                    <p className="text-xs text-center text-gray-400 py-1">EDL entrée et sortie effectués</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowForm(true)}
+                className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-dashed border-gray-300 text-gray-400 text-sm hover:border-blue-300 hover:text-blue-500 transition-colors touch-manipulation">
+                <UserPlus size={18} />Ajouter un locataire
+              </button>
+            )}
+          </div>
+
+          {/* Anciens locataires */}
+          {anciens.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-gray-700 text-sm">Anciens locataires</h3>
+              {anciens.map(loc => (
+                <div key={loc.lien_id} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                    <User size={16} className="text-gray-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700">{loc.prenom} {loc.nom}</p>
+                    {loc.date_entree && (
+                      <p className="text-xs text-gray-400">
+                        Entrée {new Date(loc.date_entree).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                  </div>
+                  <button type="button"
+                    onClick={() => onStartEDL(loc, 'entree')}
+                    className="text-xs text-blue-600 font-medium touch-manipulation px-2">
+                    Assigner
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Historique EDL */}
+          {edls.length > 0 && (
+            <div className="space-y-3 pt-1">
+              <h3 className="font-semibold text-gray-900">Historique des états des lieux</h3>
+              {[...entrees.map(e => ({ ...e, type: 'entree' as const })), ...sorties.map(e => ({ ...e, type: 'sortie' as const }))]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .map(edl => {
+                  const isEntree = edl.infos_generales.typeMouvement === 'entree'
+                  return (
+                    <div key={edl.id} className={cn(
+                      'flex items-center gap-3 p-3.5 rounded-xl border-2 bg-white',
+                      isEntree ? 'border-green-200' : 'border-orange-200'
+                    )}>
+                      {isEntree
+                        ? <ArrowDownToLine size={16} className="text-green-500 shrink-0" />
+                        : <ArrowUpFromLine size={16} className="text-orange-400 shrink-0" />
+                      }
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {edl.infos_generales.locataire.prenom} {edl.infos_generales.locataire.nom}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(edl.infos_generales.dateEtat).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <FileText size={16} className="text-gray-300 shrink-0" />
+                    </div>
+                  )
+                })}
+            </div>
+          )}
+        </>
+      )}
+
+      {showForm && (
+        <LocataireFormModal
+          appartementId={appartement.id}
+          onSuccess={async () => { await load(); setShowForm(false) }}
+          onClose={() => setShowForm(false)}
+        />
+      )}
     </div>
   )
 }
