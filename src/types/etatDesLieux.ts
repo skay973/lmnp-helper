@@ -1,4 +1,5 @@
 import type { CleItem } from './appartement'
+import type { Inventaire } from './inventaire'
 
 export type Etat = 'bon' | 'usage' | 'mauvais' | 'non_applicable'
 
@@ -42,6 +43,7 @@ export interface InfosGenerales {
   adresse: string
   ville: string
   codePostal: string
+  identifiantFiscal?: string
   dateEtat: string
   typeMouvement: 'entree' | 'sortie'
   locataire: {
@@ -84,6 +86,7 @@ export interface EtatDesLieux {
   equipements: Record<string, ElementEtat>
   equipementsEnergetiques: EquipementsEnergetiques
   observations: string
+  inventaire?: Inventaire
   createdAt?: string
 }
 

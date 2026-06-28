@@ -7,6 +7,7 @@ import { type EtatDesLieux } from '@/types/etatDesLieux'
 import { Button } from '@/components/ui/button'
 import { LocataireFormModal } from '@/components/LocataireFormModal'
 import { generateEDLPdf } from '@/lib/generatePDF'
+import { generateInventairePdf } from '@/lib/generateInventairePdf'
 import {
   ChevronLeft, UserPlus, ArrowDownToLine, ArrowUpFromLine,
   Loader2, Mail, Phone, User, CalendarDays, Download
@@ -25,6 +26,21 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [downloadingInventaireId, setDownloadingInventaireId] = useState<string | null>(null)
+
+  const buildEdl = (data: any): EtatDesLieux => ({
+    id: data.id,
+    appartementId: data.appartement_id,
+    locataireId: data.locataire_id,
+    infosGenerales: data.infos_generales,
+    pieces: data.pieces ?? [],
+    partiesPrivatives: data.parties_privatives ?? {},
+    equipements: data.equipements ?? {},
+    equipementsEnergetiques: data.equipements_energetiques ?? {},
+    observations: data.observations ?? '',
+    inventaire: data.inventaire ?? {},
+    createdAt: data.created_at,
+  })
 
   const handleDownloadPdf = async (edlId: string) => {
     setDownloadingId(edlId)
@@ -33,22 +49,19 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
       .select('*')
       .eq('id', edlId)
       .single()
-    if (data) {
-      const edl: EtatDesLieux = {
-        id: data.id,
-        appartementId: data.appartement_id,
-        locataireId: data.locataire_id,
-        infosGenerales: data.infos_generales,
-        pieces: data.pieces ?? [],
-        partiesPrivatives: data.parties_privatives ?? {},
-        equipements: data.equipements ?? {},
-        equipementsEnergetiques: data.equipements_energetiques ?? {},
-        observations: data.observations ?? '',
-        createdAt: data.created_at,
-      }
-      await generateEDLPdf(edl)
-    }
+    if (data) await generateEDLPdf(buildEdl(data))
     setDownloadingId(null)
+  }
+
+  const handleDownloadInventairePdf = async (edlId: string) => {
+    setDownloadingInventaireId(edlId)
+    const { data } = await supabase
+      .from('etats_des_lieux')
+      .select('*')
+      .eq('id', edlId)
+      .single()
+    if (data) await generateInventairePdf(buildEdl(data))
+    setDownloadingInventaireId(null)
   }
 
   const load = useCallback(async () => {
@@ -272,12 +285,24 @@ export function DetailAppartement({ appartement, onBack, onStartEDL }: Props) {
                         type="button"
                         onClick={() => handleDownloadPdf(edl.id)}
                         disabled={downloadingId === edl.id}
-                        className="p-2 -mr-1 text-gray-400 hover:text-blue-600 touch-manipulation shrink-0 disabled:opacity-50"
-                        title="Télécharger le PDF"
+                        className="p-2 text-gray-400 hover:text-blue-600 touch-manipulation shrink-0 disabled:opacity-50"
+                        title="Télécharger le PDF EDL"
                       >
                         {downloadingId === edl.id
                           ? <Loader2 size={16} className="animate-spin" />
                           : <Download size={16} />
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadInventairePdf(edl.id)}
+                        disabled={downloadingInventaireId === edl.id}
+                        className="p-2 -mr-1 text-gray-400 hover:text-purple-600 touch-manipulation shrink-0 disabled:opacity-50"
+                        title="Télécharger l'inventaire PDF"
+                      >
+                        {downloadingInventaireId === edl.id
+                          ? <Loader2 size={16} className="animate-spin" />
+                          : <Download size={16} className="opacity-60" />
                         }
                       </button>
                     </div>

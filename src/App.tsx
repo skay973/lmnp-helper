@@ -3,6 +3,7 @@ import { StepInfosGenerales } from './pages/StepInfosGenerales'
 import { StepPieces } from './pages/StepPieces'
 import { StepPieceDetail } from './pages/StepPieceDetail'
 import { StepComplements } from './pages/StepComplements'
+import { StepInventaire } from './pages/StepInventaire'
 import { StepRecapitulatif } from './pages/StepRecapitulatif'
 import { ListeAppartements } from './pages/ListeAppartements'
 import { DetailAppartement } from './pages/DetailAppartement'
@@ -11,16 +12,18 @@ import { useAuth } from './contexts/AuthContext'
 import { type EtatDesLieux, type InfosGenerales, type Piece, type TypePiece, createPiece, TYPE_PIECE_LABELS } from './types/etatDesLieux'
 import { type Appartement } from './types/appartement'
 import { type LocataireAvecStatut } from './types/locataire'
+import { createInventaire } from './types/inventaire'
 import { CheckCircle2, LogOut, Loader2, Building2, ChevronLeft, Download } from 'lucide-react'
 import { generateEDLPdf } from './lib/generatePDF'
+import { generateInventairePdf } from './lib/generateInventairePdf'
 import { Button } from './components/ui/button'
 
 type Screen = 'appartements' | 'detail_appt' | 'edl_form' | 'done'
-type EDLStep = 'infos' | 'pieces' | 'piece_detail' | 'complements' | 'recap'
+type EDLStep = 'infos' | 'pieces' | 'piece_detail' | 'complements' | 'inventaire' | 'recap'
 
-const STEP_LABELS = ['Infos', 'Pièces', 'Détails', 'Récap']
+const STEP_LABELS = ['Infos', 'Pièces', 'Autres', 'Inventaire', 'Récap']
 const STEP_INDEX: Record<EDLStep, number> = {
-  infos: 0, pieces: 1, piece_detail: 1, complements: 2, recap: 3
+  infos: 0, pieces: 1, piece_detail: 1, complements: 2, inventaire: 3, recap: 4
 }
 
 function makeInfos(appt: Appartement, locataire: LocataireAvecStatut, type: 'entree' | 'sortie'): InfosGenerales {
@@ -29,6 +32,7 @@ function makeInfos(appt: Appartement, locataire: LocataireAvecStatut, type: 'ent
     adresse: appt.adresse,
     ville: appt.ville,
     codePostal: appt.code_postal,
+    identifiantFiscal: cfg.identifiant_fiscal ?? '',
     dateEtat: new Date().toISOString().split('T')[0],
     typeMouvement: type,
     locataire: { nom: locataire.nom, prenom: locataire.prenom, email: locataire.email, telephone: locataire.telephone },
@@ -74,6 +78,7 @@ function makeEDL(appt: Appartement, locataire: LocataireAvecStatut, type: 'entre
     ),
     equipementsEnergetiques: {},
     observations: '',
+    inventaire: createInventaire(),
   }
 }
 
@@ -89,6 +94,7 @@ export default function App() {
   const [savedEtat, setSavedEtat] = useState<EtatDesLieux | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [generatingInventairePdf, setGeneratingInventairePdf] = useState(false)
 
   const setPieces = (pieces: Piece[]) => setEtat(e => e ? { ...e, pieces } : e)
   const setPiece = (index: number, piece: Piece) => {
@@ -106,10 +112,16 @@ export default function App() {
     setScreen('edl_form')
   }
 
-  const handleDownloadPdf = async (data: EtatDesLieux) => {
+  const handleDownloadEdlPdf = async (data: EtatDesLieux) => {
     setGeneratingPdf(true)
     await generateEDLPdf(data)
     setGeneratingPdf(false)
+  }
+
+  const handleDownloadInventairePdf = async (data: EtatDesLieux) => {
+    setGeneratingInventairePdf(true)
+    await generateInventairePdf(data)
+    setGeneratingInventairePdf(false)
   }
 
   const headerTitle = () => {
@@ -180,11 +192,17 @@ export default function App() {
               <Button
                 className="w-full"
                 size="lg"
-                onClick={() => handleDownloadPdf(savedEtat)}
+                onClick={() => handleDownloadEdlPdf(savedEtat)}
                 disabled={generatingPdf}
               >
                 {generatingPdf ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
                 {generatingPdf ? 'Génération du PDF...' : 'Télécharger le PDF'}
+              </Button>
+              <Button variant="outline" className="w-full" size="lg"
+                onClick={() => handleDownloadInventairePdf(savedEtat)}
+                disabled={generatingInventairePdf}>
+                {generatingInventairePdf ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                {generatingInventairePdf ? 'Génération...' : "Télécharger l'inventaire"}
               </Button>
               <button onClick={() => { setScreen('detail_appt'); setSavedId(null); setSavedEtat(null) }}
                 className="text-blue-600 text-sm font-medium underline touch-manipulation block w-full">
@@ -229,14 +247,22 @@ export default function App() {
                 onChangeEquipements={v => setEtat(e => e ? { ...e, equipements: v } : e)}
                 onChangeEquipementsEnergetiques={v => setEtat(e => e ? { ...e, equipementsEnergetiques: v } : e)}
                 onChangeObservations={v => setEtat(e => e ? { ...e, observations: v } : e)}
-                onNext={() => setEdlStep('recap')}
+                onNext={() => setEdlStep('inventaire')}
                 onBack={() => setEdlStep('pieces')}
+              />
+            )}
+            {edlStep === 'inventaire' && (
+              <StepInventaire
+                value={etat.inventaire ?? []}
+                onChange={inventaire => setEtat(e => e ? { ...e, inventaire } : e)}
+                onNext={() => setEdlStep('recap')}
+                onBack={() => setEdlStep('complements')}
               />
             )}
             {edlStep === 'recap' && (
               <StepRecapitulatif
                 data={etat}
-                onBack={() => setEdlStep('complements')}
+                onBack={() => setEdlStep('inventaire')}
                 onSuccess={(id, finalData) => { setSavedId(id); setSavedEtat(finalData); setScreen('done') }}
               />
             )}

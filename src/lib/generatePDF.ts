@@ -98,7 +98,7 @@ export async function generateEDLPdf(data: EtatDesLieux): Promise<void> {
       ['Type', 'Appartement'],
       ['Adresse', `${info.adresse}, ${info.codePostal} ${info.ville}`],
       ...(data.infosGenerales as any).surface ? [['Surface habitable', `${(data.infosGenerales as any).surface} m²`]] : [],
-      ['Identifiant fiscal', (info as any).identifiant_fiscal ?? '_______________'],
+      ['Identifiant fiscal', info.identifiantFiscal || '_______________'],
     ],
     columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' } },
   })

@@ -36,6 +36,7 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
           equipements: data.equipements,
           equipements_energetiques: data.equipementsEnergetiques,
           observations: data.observations,
+          inventaire: data.inventaire ?? {},
           created_at: new Date().toISOString(),
         }])
         .select('id')
