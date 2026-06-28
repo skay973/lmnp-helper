@@ -18,6 +18,10 @@ export interface AppartementConfig {
   cles_defaut: CleItem[]
   pieces_defaut: string[]
   equipements_communs: string[]
+  compteurs?: {
+    electricite_pdl?: string
+    eau_numero?: string
+  }
 }
 
 export interface Appartement {

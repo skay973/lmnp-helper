@@ -206,24 +206,21 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
       </Section>
 
       <Section icon={<Droplets size={18} />} title="Eau">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Eau froide (m³)">
-            <Input
-              placeholder="000"
-              inputMode="decimal"
-              value={value.releveCompteurs.eau_froide ?? ''}
-              onChange={e => setCompteur('eau_froide', e.target.value)}
-            />
-          </Field>
-          <Field label="Eau chaude (m³)">
-            <Input
-              placeholder="000"
-              inputMode="decimal"
-              value={value.releveCompteurs.eau_chaude ?? ''}
-              onChange={e => setCompteur('eau_chaude', e.target.value)}
-            />
-          </Field>
-        </div>
+        <Field label="N° compteur eau">
+          <Input
+            placeholder="_______________"
+            value={value.releveCompteurs.eau_numero ?? ''}
+            onChange={e => setCompteur('eau_numero', e.target.value)}
+          />
+        </Field>
+        <Field label="Eau froide (m³)">
+          <Input
+            placeholder="000"
+            inputMode="decimal"
+            value={value.releveCompteurs.eau_froide ?? ''}
+            onChange={e => setCompteur('eau_froide', e.target.value)}
+          />
+        </Field>
       </Section>
 
       <Section icon={<Key size={18} />} title="Remise des clés">

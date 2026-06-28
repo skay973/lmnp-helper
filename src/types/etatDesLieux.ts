@@ -33,8 +33,8 @@ export interface ReleveCompteurs {
   electricite_pdl?: string
   electricite_hp?: string
   electricite_hc?: string
+  eau_numero?: string
   eau_froide?: string
-  eau_chaude?: string
   gaz?: string
 }
 

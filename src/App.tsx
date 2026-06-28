@@ -34,7 +34,10 @@ function makeInfos(appt: Appartement, locataire: LocataireAvecStatut, type: 'ent
     locataire: { nom: locataire.nom, prenom: locataire.prenom, email: locataire.email, telephone: locataire.telephone },
     bailleur: { nom: cfg.bailleur?.nom ?? '', prenom: cfg.bailleur?.prenom ?? '', email: cfg.bailleur?.email, adresse: cfg.bailleur?.adresse },
     bail: { dateDebut: locataire.date_entree ?? '', duree: '1 an' },
-    releveCompteurs: {},
+    releveCompteurs: {
+      electricite_pdl: cfg.compteurs?.electricite_pdl ?? '',
+      eau_numero: cfg.compteurs?.eau_numero ?? '',
+    },
     has_gaz: cfg.has_gaz ?? false,
     cles: cfg.cles_defaut ?? [],
     equipements_communs: Object.fromEntries((cfg.equipements_communs ?? []).map(e => [e, {}])),

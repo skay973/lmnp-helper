@@ -162,8 +162,8 @@ export async function generateEDLPdf(data: EtatDesLieux): Promise<void> {
     head: [['Eau', '']],
     headStyles: { fillColor: [220, 230, 241], textColor: 20, fontStyle: 'bold' },
     body: [
+      ['N° compteur eau', cpt.eau_numero || '___________________________'],
       ['Eau froide (m³)', cpt.eau_froide || '___________________________'],
-      ['Eau chaude (m³)', cpt.eau_chaude || '___________________________'],
     ],
     columnStyles: { 0: { cellWidth: 80, fontStyle: 'bold' } },
   })
