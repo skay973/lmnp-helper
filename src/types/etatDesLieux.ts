@@ -1,36 +1,16 @@
+import type { CleItem } from './appartement'
+
 export type Etat = 'bon' | 'usage' | 'mauvais' | 'non_applicable'
 
-export interface PhotoItem {
-  id: string
-  url: string
-  caption?: string
-}
-
 export interface ElementEtat {
-  etat: Etat
+  etat?: Etat
   commentaire?: string
-  photos: PhotoItem[]
-}
-
-export interface PieceSection {
-  [elementKey: string]: ElementEtat
 }
 
 export interface Piece {
   nom: string
   type: TypePiece
-  sections: {
-    sols: PieceSection
-    murs: PieceSection
-    plafond: PieceSection
-    portes: PieceSection
-    fenetres: PieceSection
-    electricite: PieceSection
-    plomberie: PieceSection
-    rangements: PieceSection
-    equipements: PieceSection
-    autres: PieceSection
-  }
+  elements: Record<string, ElementEtat>
   commentaireGeneral?: string
 }
 
@@ -49,6 +29,15 @@ export type TypePiece =
   | 'garage'
   | 'autre'
 
+export interface ReleveCompteurs {
+  electricite_pdl?: string
+  electricite_hp?: string
+  electricite_hc?: string
+  eau_froide?: string
+  eau_chaude?: string
+  gaz?: string
+}
+
 export interface InfosGenerales {
   adresse: string
   ville: string
@@ -65,17 +54,16 @@ export interface InfosGenerales {
     nom: string
     prenom: string
     email?: string
-    telephone?: string
+    adresse?: string
   }
-  releveCompteurs: {
-    electricite?: string
-    gaz?: string
-    eau?: string
-    eau_chaude?: string
+  bail?: {
+    dateDebut?: string
+    duree?: string
   }
-  nombreCles: number
-  nombreBadges: number
-  autresRemises?: string
+  releveCompteurs: ReleveCompteurs
+  has_gaz: boolean
+  cles: CleItem[]
+  equipements_communs?: Record<string, ElementEtat>
 }
 
 export interface EtatDesLieux {
@@ -84,30 +72,131 @@ export interface EtatDesLieux {
   infosGenerales: InfosGenerales
   pieces: Piece[]
   observations?: string
-  signatureLocataire?: string
-  signatureBailleur?: string
   createdAt?: string
-  updatedAt?: string
 }
 
-export const ELEMENTS_PAR_SECTION: Record<string, string[]> = {
-  sols: ['Revêtement', 'Propreté', 'État général'],
-  murs: ['Peinture / Papier peint', 'Propreté', 'Fissures'],
-  plafond: ['Peinture', 'Propreté', 'Fissures', 'Moisissures'],
-  portes: ['Porte', 'Poignée / Serrure', 'Huisserie', 'Joint'],
-  fenetres: ['Vitrage', 'Cadre / Menuiserie', 'Poignée / Fermeture', 'Volets / Store'],
-  electricite: ['Interrupteurs', 'Prises', 'Luminaires', 'Tableau électrique'],
-  plomberie: ['Robinets', 'Évacuation', 'Joints / Étanchéité'],
-  rangements: ['Placards', 'Étagères', 'Portes de rangement'],
-  equipements: ['Cuisine / Électroménager', 'Salle de bain / Sanitaires', 'Radiateur / Chauffage', 'VMC / Ventilation'],
-  autres: [],
+// Éléments par type de pièce — alignés sur la trame officielle
+export const ELEMENTS_PAR_TYPE_PIECE: Record<TypePiece, string[]> = {
+  entree: [
+    'Portes / Menuiseries',
+    'Plafond',
+    'Sol / Plinthes',
+    'Murs',
+    'Placard',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+  ],
+  salon: [
+    'Portes / Menuiseries',
+    'Fenêtres / Volets / Rideaux',
+    'Plafond',
+    'Sol / Plinthes',
+    'Murs',
+    'Placard',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+    'Climatisation',
+  ],
+  salle_a_manger: [
+    'Portes / Menuiseries',
+    'Fenêtres / Volets / Rideaux',
+    'Plafond',
+    'Sol / Plinthes',
+    'Murs',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+  ],
+  cuisine: [
+    'Portes / Menuiseries',
+    'Fenêtres / Volets',
+    'Plafond / Murs',
+    'Sol / Plinthes',
+    'Rangements / Plan de travail',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+    'Évier / Robinetterie',
+    'Plaque de cuisson',
+    'Hotte aspirante',
+    'Four',
+    'Réfrigérateur / Congélateur',
+    'VMC',
+  ],
+  chambre: [
+    'Portes / Menuiseries',
+    'Fenêtres / Volets / Rideaux',
+    'Plafond',
+    'Sol / Plinthes',
+    'Murs',
+    'Placard',
+    'Placard intégré',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+    'Climatisation',
+  ],
+  salle_de_bain: [
+    'Portes / Menuiseries',
+    'Plafond',
+    'Sol / Plinthes',
+    'Étagères',
+    'Placard',
+    'Prises / Interrupteurs',
+    'Éclairage / Plafonnier + meuble',
+    'Baignoire',
+    'Lavabo / Robinetterie',
+    'VMC',
+  ],
+  wc: [
+    'Portes / Menuiseries',
+    'Plafond',
+    'Sol / Plinthes / Murs',
+    'Cuvette / Abattant / Chasse d\'eau',
+    'Prises / Interrupteurs',
+    'Éclairage',
+    'VMC',
+  ],
+  couloir: [
+    'Portes / Menuiseries',
+    'Plafond',
+    'Sol / Plinthes',
+    'Murs',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+  ],
+  bureau: [
+    'Portes / Menuiseries',
+    'Fenêtres / Volets',
+    'Plafond',
+    'Sol / Plinthes',
+    'Murs',
+    'Prises / Interrupteurs',
+    'Luminaire / Plafonnier',
+  ],
+  balcon: [
+    'Bloc climatisation',
+    'Fausse pelouse',
+    'Brise vue',
+  ],
+  cave: [
+    'Porte / Accès',
+    'Sol',
+    'Murs / Plafond',
+    'État général',
+  ],
+  garage: [
+    'Porte / Portail',
+    'Sol',
+    'Murs / Plafond',
+    'Éclairage',
+    'État général',
+  ],
+  autre: [
+    'État général',
+  ],
 }
-
-export const PIECES_DEFAUT: Omit<Piece, 'nom'>[] = []
 
 export const TYPE_PIECE_LABELS: Record<TypePiece, string> = {
   entree: 'Entrée',
-  salon: 'Salon',
+  salon: 'Séjour / Pièce à vivre',
   salle_a_manger: 'Salle à manger',
   chambre: 'Chambre',
   cuisine: 'Cuisine',
@@ -122,15 +211,28 @@ export const TYPE_PIECE_LABELS: Record<TypePiece, string> = {
 }
 
 export const ETAT_LABELS: Record<Etat, string> = {
-  bon: 'Bon état',
-  usage: 'Usage normal',
-  mauvais: 'Mauvais état',
+  bon: 'Bon',
+  usage: 'Usage',
+  mauvais: 'Mauvais',
   non_applicable: 'N/A',
 }
 
 export const ETAT_COLORS: Record<Etat, string> = {
-  bon: 'bg-green-100 text-green-800 border-green-300',
-  usage: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  mauvais: 'bg-red-100 text-red-800 border-red-300',
+  bon: 'bg-green-100 text-green-800 border-green-400',
+  usage: 'bg-yellow-100 text-yellow-800 border-yellow-400',
+  mauvais: 'bg-red-100 text-red-800 border-red-400',
   non_applicable: 'bg-gray-100 text-gray-500 border-gray-300',
+}
+
+export function createPiece(type: TypePiece, nom: string): Piece {
+  const elements: Record<string, ElementEtat> = {}
+  for (const el of ELEMENTS_PAR_TYPE_PIECE[type] ?? []) {
+    elements[el] = {}
+  }
+  return { nom, type, elements }
+}
+
+export function getPieceCompletion(piece: Piece): { completed: number; total: number } {
+  const values = Object.values(piece.elements)
+  return { completed: values.filter(e => e.etat).length, total: values.length }
 }

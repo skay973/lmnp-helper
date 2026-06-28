@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { Plus, Trash2, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { type Piece, type TypePiece, TYPE_PIECE_LABELS, ELEMENTS_PAR_SECTION } from '@/types/etatDesLieux'
+import { type Piece, type TypePiece, TYPE_PIECE_LABELS, createPiece, getPieceCompletion } from '@/types/etatDesLieux'
 import { cn } from '@/lib/utils'
+import { useState } from 'react'
 
 interface Props {
   pieces: Piece[]
@@ -15,70 +15,43 @@ interface Props {
 const TYPES_COMMUNS: TypePiece[] = ['entree', 'salon', 'chambre', 'cuisine', 'salle_de_bain', 'wc', 'couloir']
 const TYPES_AUTRES: TypePiece[] = ['salle_a_manger', 'bureau', 'balcon', 'cave', 'garage', 'autre']
 
-function createPieceVide(type: TypePiece, nom: string): Piece {
-  const sections: Piece['sections'] = {
-    sols: {},
-    murs: {},
-    plafond: {},
-    portes: {},
-    fenetres: {},
-    electricite: {},
-    plomberie: {},
-    rangements: {},
-    equipements: {},
-    autres: {},
-  }
-  return { nom, type, sections }
-}
-
-function getPieceCompletion(piece: Piece): { completed: number; total: number } {
-  let completed = 0
-  let total = 0
-  for (const [sectionKey, section] of Object.entries(piece.sections)) {
-    const elements = ELEMENTS_PAR_SECTION[sectionKey] ?? []
-    total += elements.length
-    completed += elements.filter(el => (section as Record<string, { etat?: string }>)[el]?.etat).length
-  }
-  return { completed, total }
-}
-
 export function StepPieces({ pieces, onChange, onNext, onBack, onEditPiece }: Props) {
   const [showModal, setShowModal] = useState(false)
 
   const addPiece = (type: TypePiece) => {
     const count = pieces.filter(p => p.type === type).length
     const nom = count === 0 ? TYPE_PIECE_LABELS[type] : `${TYPE_PIECE_LABELS[type]} ${count + 1}`
-    onChange([...pieces, createPieceVide(type, nom)])
+    onChange([...pieces, createPiece(type, nom)])
     setShowModal(false)
   }
 
-  const removePiece = (index: number) => {
-    onChange(pieces.filter((_, i) => i !== index))
-  }
+  const removePiece = (index: number) => onChange(pieces.filter((_, i) => i !== index))
+
+  const totalCompleted = pieces.filter(p => {
+    const { completed, total } = getPieceCompletion(p)
+    return completed === total && total > 0
+  }).length
 
   return (
     <div className="space-y-4 pb-8">
-      <p className="text-sm text-gray-600">
-        Ajoutez toutes les pièces du logement, puis saisissez l'état de chacune.
-      </p>
-
-      {pieces.length === 0 && (
-        <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-2xl">
-          <p className="text-sm">Aucune pièce ajoutée</p>
-          <p className="text-xs mt-1">Commencez par ajouter une pièce</p>
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">{pieces.length} pièce{pieces.length > 1 ? 's' : ''}</p>
+        <span className="text-xs font-medium text-gray-500">{totalCompleted}/{pieces.length} complètes</span>
+      </div>
 
       <div className="space-y-2">
         {pieces.map((piece, index) => {
           const { completed, total } = getPieceCompletion(piece)
           const isComplete = completed === total && total > 0
+          const hasIssues = Object.values(piece.elements).some(e => e.etat === 'mauvais')
+
           return (
             <div
               key={index}
               className={cn(
                 'flex items-center gap-3 p-4 rounded-2xl border-2 bg-white',
-                isComplete ? 'border-green-300' : 'border-gray-200'
+                isComplete && !hasIssues ? 'border-green-300' :
+                hasIssues ? 'border-red-200' : 'border-gray-200'
               )}
             >
               <button
@@ -87,21 +60,21 @@ export function StepPieces({ pieces, onChange, onNext, onBack, onEditPiece }: Pr
                 className="flex-1 flex items-center gap-3 text-left touch-manipulation"
               >
                 {isComplete
-                  ? <CheckCircle2 size={20} className="text-green-500 shrink-0" />
+                  ? <CheckCircle2 size={20} className={cn('shrink-0', hasIssues ? 'text-orange-400' : 'text-green-500')} />
                   : <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
                 }
-                <div>
-                  <p className="font-medium text-gray-900">{piece.nom}</p>
-                  <p className="text-xs text-gray-500">{completed}/{total} éléments saisis</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 text-sm">{piece.nom}</p>
+                  <p className="text-xs text-gray-400">{completed}/{total} éléments</p>
                 </div>
-                <ChevronRight size={18} className="text-gray-400 ml-auto" />
+                <ChevronRight size={18} className="text-gray-400 ml-auto shrink-0" />
               </button>
               <button
                 type="button"
                 onClick={() => removePiece(index)}
-                className="p-2 text-gray-400 hover:text-red-500 touch-manipulation"
+                className="p-2 text-gray-300 hover:text-red-400 touch-manipulation"
               >
-                <Trash2 size={18} />
+                <Trash2 size={16} />
               </button>
             </div>
           )
@@ -114,11 +87,9 @@ export function StepPieces({ pieces, onChange, onNext, onBack, onEditPiece }: Pr
       </Button>
 
       <div className="flex gap-3 pt-2">
-        <Button variant="outline" onClick={onBack} className="flex-1">
-          Retour
-        </Button>
+        <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>
         <Button onClick={onNext} className="flex-1" disabled={pieces.length === 0}>
-          Terminer & Récapituler
+          Récapitulatif →
         </Button>
       </div>
 
@@ -128,40 +99,30 @@ export function StepPieces({ pieces, onChange, onNext, onBack, onEditPiece }: Pr
             className="bg-white rounded-t-3xl w-full p-6 space-y-4 max-h-[80vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-gray-900">Choisir le type de pièce</h3>
+            <h3 className="text-lg font-bold text-gray-900">Ajouter une pièce</h3>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pièces principales</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Principales</p>
               <div className="grid grid-cols-2 gap-2">
                 {TYPES_COMMUNS.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => addPiece(type)}
-                    className="p-3 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-800 text-left hover:border-blue-400 hover:bg-blue-50 touch-manipulation transition-colors"
-                  >
+                  <button key={type} type="button" onClick={() => addPiece(type)}
+                    className="p-3 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-800 text-left hover:border-blue-400 hover:bg-blue-50 touch-manipulation transition-colors">
                     {TYPE_PIECE_LABELS[type]}
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Autres espaces</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Autres</p>
               <div className="grid grid-cols-2 gap-2">
                 {TYPES_AUTRES.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => addPiece(type)}
-                    className="p-3 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-800 text-left hover:border-blue-400 hover:bg-blue-50 touch-manipulation transition-colors"
-                  >
+                  <button key={type} type="button" onClick={() => addPiece(type)}
+                    className="p-3 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-800 text-left hover:border-blue-400 hover:bg-blue-50 touch-manipulation transition-colors">
                     {TYPE_PIECE_LABELS[type]}
                   </button>
                 ))}
               </div>
             </div>
-            <Button variant="ghost" className="w-full" onClick={() => setShowModal(false)}>
-              Annuler
-            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => setShowModal(false)}>Annuler</Button>
           </div>
         </div>
       )}

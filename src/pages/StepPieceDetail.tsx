@@ -1,8 +1,9 @@
-import { SectionPiece } from '@/components/SectionPiece'
+import { ElementsList } from '@/components/ElementsList'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { type Piece, type PieceSection } from '@/types/etatDesLieux'
-import { ChevronLeft } from 'lucide-react'
+import { type Piece } from '@/types/etatDesLieux'
+import { ChevronLeft, CheckCircle2 } from 'lucide-react'
+import { getPieceCompletion } from '@/types/etatDesLieux'
 
 interface Props {
   piece: Piece
@@ -10,15 +11,9 @@ interface Props {
   onBack: () => void
 }
 
-const SECTIONS_ORDONNEES: (keyof Piece['sections'])[] = [
-  'sols', 'murs', 'plafond', 'portes', 'fenetres',
-  'electricite', 'plomberie', 'rangements', 'equipements', 'autres'
-]
-
 export function StepPieceDetail({ piece, onChange, onBack }: Props) {
-  const setSection = (key: keyof Piece['sections'], value: PieceSection) => {
-    onChange({ ...piece, sections: { ...piece.sections, [key]: value } })
-  }
+  const { completed, total } = getPieceCompletion(piece)
+  const isComplete = completed === total && total > 0
 
   return (
     <div className="space-y-4 pb-8">
@@ -31,33 +26,37 @@ export function StepPieceDetail({ piece, onChange, onBack }: Props) {
         Retour à la liste des pièces
       </button>
 
-      <div className="space-y-1">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900">{piece.nom}</h2>
-        <p className="text-sm text-gray-500">Ouvrez chaque section pour saisir l'état des éléments</p>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+          isComplete ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+        }`}>
+          {completed}/{total}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        {SECTIONS_ORDONNEES.map((sectionKey) => (
-          <SectionPiece
-            key={sectionKey}
-            sectionKey={sectionKey}
-            value={piece.sections[sectionKey]}
-            onChange={(val) => setSection(sectionKey, val)}
-          />
-        ))}
-      </div>
+      <ElementsList
+        elements={piece.elements}
+        onChange={elements => onChange({ ...piece, elements })}
+      />
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">Observations générales sur la pièce</label>
+      <div className="space-y-1.5 pt-1">
+        <label className="text-sm font-medium text-gray-700">Observations générales</label>
         <Textarea
-          placeholder="Remarques générales, odeurs, humidité..."
+          placeholder="Remarques, odeurs, humidité..."
           value={piece.commentaireGeneral ?? ''}
           onChange={e => onChange({ ...piece, commentaireGeneral: e.target.value })}
         />
       </div>
 
-      <Button className="w-full" size="lg" onClick={onBack}>
-        Valider cette pièce
+      <Button
+        className="w-full"
+        size="lg"
+        onClick={onBack}
+        variant={isComplete ? 'default' : 'outline'}
+      >
+        {isComplete && <CheckCircle2 size={18} />}
+        {isComplete ? 'Pièce validée' : 'Enregistrer et revenir'}
       </Button>
     </div>
   )

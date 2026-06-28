@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { type EtatDesLieux, ELEMENTS_PAR_SECTION } from '@/types/etatDesLieux'
+import { type EtatDesLieux, getPieceCompletion } from '@/types/etatDesLieux'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -16,16 +16,9 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   const problemes = data.pieces.flatMap(piece =>
-    Object.entries(piece.sections).flatMap(([sectionKey, section]) =>
-      (ELEMENTS_PAR_SECTION[sectionKey] ?? [])
-        .filter(el => (section as Record<string, { etat?: string }>)[el]?.etat === 'mauvais')
-        .map(el => ({
-          piece: piece.nom,
-          section: sectionKey,
-          element: el,
-          commentaire: (section as Record<string, { commentaire?: string }>)[el]?.commentaire,
-        }))
-    )
+    Object.entries(piece.elements)
+      .filter(([, val]) => val.etat === 'mauvais')
+      .map(([key, val]) => ({ piece: piece.nom, element: key, commentaire: val.commentaire }))
   )
 
   const handleSave = async () => {
@@ -46,8 +39,8 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
 
       if (err) throw err
       onSuccess(saved.id)
-    } catch (e) {
-      setError("Erreur lors de la sauvegarde. Vérifiez votre connexion.")
+    } catch {
+      setError('Erreur lors de la sauvegarde. Vérifiez votre connexion.')
       setSaving(false)
     }
   }
@@ -55,10 +48,10 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
   const { infosGenerales: info } = data
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 pb-8">
       <div className="bg-blue-50 rounded-2xl p-4 space-y-1">
         <h3 className="font-semibold text-blue-900">
-          {info.typeMouvement === 'entree' ? 'Entrée' : 'Sortie'} — {info.dateEtat}
+          {info.typeMouvement === 'entree' ? '↓ Entrée' : '↑ Sortie'} — {new Date(info.dateEtat).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
         </h3>
         <p className="text-sm text-blue-800">{info.adresse}, {info.codePostal} {info.ville}</p>
         <p className="text-sm text-blue-700">
@@ -67,24 +60,29 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
       </div>
 
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">
-          {data.pieces.length} pièce{data.pieces.length > 1 ? 's' : ''} inspectée{data.pieces.length > 1 ? 's' : ''}
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">
+          {data.pieces.length} pièce{data.pieces.length > 1 ? 's' : ''}
         </h3>
         <div className="space-y-2">
           {data.pieces.map((piece, i) => {
-            const hasProbleme = Object.entries(piece.sections).some(([sk, s]) =>
-              (ELEMENTS_PAR_SECTION[sk] ?? []).some(el => (s as Record<string, { etat?: string }>)[el]?.etat === 'mauvais')
-            )
+            const { completed, total } = getPieceCompletion(piece)
+            const hasProbleme = Object.values(piece.elements).some(e => e.etat === 'mauvais')
+            const isIncomplete = completed < total
             return (
               <div key={i} className={cn(
-                'flex items-center gap-3 p-3 rounded-xl',
-                hasProbleme ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'
+                'flex items-center gap-3 p-3 rounded-xl border',
+                hasProbleme ? 'bg-red-50 border-red-200' :
+                isIncomplete ? 'bg-yellow-50 border-yellow-200' :
+                'bg-green-50 border-green-200'
               )}>
                 {hasProbleme
-                  ? <AlertTriangle size={18} className="text-red-500 shrink-0" />
-                  : <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+                  ? <AlertTriangle size={16} className="text-red-500 shrink-0" />
+                  : isIncomplete
+                  ? <AlertTriangle size={16} className="text-yellow-500 shrink-0" />
+                  : <CheckCircle2 size={16} className="text-green-500 shrink-0" />
                 }
-                <span className="text-sm font-medium text-gray-900">{piece.nom}</span>
+                <span className="text-sm font-medium text-gray-900 flex-1">{piece.nom}</span>
+                <span className="text-xs text-gray-400">{completed}/{total}</span>
               </div>
             )
           })}
@@ -93,18 +91,14 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
 
       {problemes.length > 0 && (
         <div>
-          <h3 className="font-semibold text-red-700 mb-3">
+          <h3 className="text-sm font-semibold text-red-700 mb-2">
             {problemes.length} problème{problemes.length > 1 ? 's' : ''} signalé{problemes.length > 1 ? 's' : ''}
           </h3>
           <div className="space-y-2">
             {problemes.map((p, i) => (
               <div key={i} className="bg-red-50 border border-red-200 rounded-xl p-3">
-                <p className="text-sm font-medium text-red-900">
-                  {p.piece} — {p.element}
-                </p>
-                {p.commentaire && (
-                  <p className="text-xs text-red-700 mt-1">{p.commentaire}</p>
-                )}
+                <p className="text-sm font-medium text-red-900">{p.piece} — {p.element}</p>
+                {p.commentaire && <p className="text-xs text-red-700 mt-0.5">{p.commentaire}</p>}
               </div>
             ))}
           </div>
@@ -112,17 +106,13 @@ export function StepRecapitulatif({ data, onBack, onSuccess }: Props) {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-300 rounded-xl p-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="bg-red-50 border border-red-300 rounded-xl p-3 text-sm text-red-700">{error}</div>
       )}
 
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} className="flex-1" disabled={saving}>
-          Modifier
-        </Button>
+        <Button variant="outline" onClick={onBack} className="flex-1" disabled={saving}>Modifier</Button>
         <Button onClick={handleSave} className="flex-1" disabled={saving}>
-          {saving ? <Loader2 size={18} className="animate-spin" /> : null}
+          {saving && <Loader2 size={18} className="animate-spin" />}
           {saving ? 'Enregistrement...' : 'Sauvegarder'}
         </Button>
       </div>

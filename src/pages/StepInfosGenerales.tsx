@@ -1,7 +1,8 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { type InfosGenerales } from '@/types/etatDesLieux'
-import { Home, User, Calendar, Key } from 'lucide-react'
+import { type CleItem } from '@/types/appartement'
+import { Home, User, Zap, Droplets, Key } from 'lucide-react'
 
 interface Props {
   value: InfosGenerales
@@ -9,11 +10,12 @@ interface Props {
   onNext: () => void
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <label className="text-sm font-medium text-gray-700">{label}</label>
       {children}
+      {hint && <p className="text-xs text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -30,6 +32,27 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
   )
 }
 
+function CleStepper({ item, onChange }: { item: CleItem; onChange: (item: CleItem) => void }) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+      <span className="text-sm text-gray-800 flex-1">{item.type}</span>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange({ ...item, nombre: Math.max(0, item.nombre - 1) })}
+          className="w-9 h-9 rounded-full bg-white border-2 border-gray-300 text-gray-700 font-bold text-lg flex items-center justify-center touch-manipulation active:scale-95"
+        >−</button>
+        <span className="w-6 text-center font-bold text-gray-900 text-lg">{item.nombre}</span>
+        <button
+          type="button"
+          onClick={() => onChange({ ...item, nombre: item.nombre + 1 })}
+          className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-lg flex items-center justify-center touch-manipulation active:scale-95"
+        >+</button>
+      </div>
+    </div>
+  )
+}
+
 export function StepInfosGenerales({ value, onChange, onNext }: Props) {
   const set = <K extends keyof InfosGenerales>(key: K, val: InfosGenerales[K]) =>
     onChange({ ...value, [key]: val })
@@ -37,86 +60,97 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
   const setLocataire = (key: keyof InfosGenerales['locataire'], val: string) =>
     set('locataire', { ...value.locataire, [key]: val })
 
-  const setBailleur = (key: keyof InfosGenerales['bailleur'], val: string) =>
-    set('bailleur', { ...value.bailleur, [key]: val })
-
   const setCompteur = (key: keyof InfosGenerales['releveCompteurs'], val: string) =>
     set('releveCompteurs', { ...value.releveCompteurs, [key]: val })
 
+  const updateCle = (index: number, item: CleItem) => {
+    const cles = [...value.cles]
+    cles[index] = item
+    set('cles', cles)
+  }
+
   const isValid =
-    value.adresse && value.ville && value.codePostal &&
-    value.locataire.nom && value.locataire.prenom &&
-    value.bailleur.nom && value.bailleur.prenom
+    value.locataire.nom.trim() &&
+    value.locataire.prenom.trim() &&
+    value.dateEtat
 
   return (
     <div className="space-y-6 pb-8">
+
+      {/* Type de mouvement */}
+      <div className="flex gap-3">
+        {(['entree', 'sortie'] as const).map(t => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => set('typeMouvement', t)}
+            className={`flex-1 h-14 rounded-2xl border-2 text-base font-bold transition-all touch-manipulation ${
+              value.typeMouvement === t
+                ? t === 'entree'
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-orange-500 bg-orange-50 text-orange-700'
+                : 'border-gray-200 text-gray-500 bg-white'
+            }`}
+          >
+            {t === 'entree' ? '↓ Entrée' : '↑ Sortie'}
+          </button>
+        ))}
+      </div>
+
       <Section icon={<Home size={18} />} title="Logement">
-        <Field label="Adresse">
+        <Field label="Date de l'état des lieux">
           <Input
-            placeholder="12 rue de la Paix"
-            value={value.adresse}
-            onChange={e => set('adresse', e.target.value)}
+            type="date"
+            value={value.dateEtat}
+            onChange={e => set('dateEtat', e.target.value)}
           />
+        </Field>
+        <Field label="Adresse">
+          <Input value={value.adresse} readOnly className="bg-gray-50 text-gray-600" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Code postal">
-            <Input
-              placeholder="75001"
-              value={value.codePostal}
-              inputMode="numeric"
-              onChange={e => set('codePostal', e.target.value)}
-            />
+            <Input value={value.codePostal} readOnly className="bg-gray-50 text-gray-600" />
           </Field>
           <Field label="Ville">
-            <Input
-              placeholder="Paris"
-              value={value.ville}
-              onChange={e => set('ville', e.target.value)}
-            />
+            <Input value={value.ville} readOnly className="bg-gray-50 text-gray-600" />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Date">
-            <Input
-              type="date"
-              value={value.dateEtat}
-              onChange={e => set('dateEtat', e.target.value)}
-            />
-          </Field>
-          <Field label="Type">
-            <div className="flex gap-2">
-              {(['entree', 'sortie'] as const).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => set('typeMouvement', t)}
-                  className={`flex-1 h-12 rounded-lg border-2 text-sm font-medium transition-all touch-manipulation ${
-                    value.typeMouvement === t
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 text-gray-600'
-                  }`}
-                >
-                  {t === 'entree' ? 'Entrée' : 'Sortie'}
-                </button>
-              ))}
-            </div>
-          </Field>
-        </div>
+        {value.bail !== undefined && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Début du bail">
+              <Input
+                type="date"
+                value={value.bail?.dateDebut ?? ''}
+                onChange={e => set('bail', { ...value.bail, dateDebut: e.target.value })}
+              />
+            </Field>
+            <Field label="Durée">
+              <Input
+                placeholder="1 an"
+                value={value.bail?.duree ?? ''}
+                onChange={e => set('bail', { ...value.bail, duree: e.target.value })}
+              />
+            </Field>
+          </div>
+        )}
       </Section>
 
       <Section icon={<User size={18} />} title="Locataire">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Prénom">
             <Input
-              placeholder="Jean"
+              placeholder="Prénom"
               value={value.locataire.prenom}
+              autoComplete="given-name"
               onChange={e => setLocataire('prenom', e.target.value)}
             />
           </Field>
           <Field label="Nom">
             <Input
-              placeholder="Dupont"
+              placeholder="Nom"
               value={value.locataire.nom}
+              autoComplete="family-name"
               onChange={e => setLocataire('nom', e.target.value)}
             />
           </Field>
@@ -124,8 +158,9 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         <Field label="Email">
           <Input
             type="email"
-            placeholder="jean.dupont@email.com"
+            placeholder="email@exemple.com"
             value={value.locataire.email ?? ''}
+            autoComplete="email"
             onChange={e => setLocataire('email', e.target.value)}
           />
         </Field>
@@ -134,68 +169,56 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
             type="tel"
             placeholder="06 00 00 00 00"
             value={value.locataire.telephone ?? ''}
+            autoComplete="tel"
+            inputMode="tel"
             onChange={e => setLocataire('telephone', e.target.value)}
           />
         </Field>
       </Section>
 
-      <Section icon={<User size={18} />} title="Bailleur">
+      <Section icon={<Zap size={18} />} title="Électricité">
+        <Field label="N° compteur (PDL)" hint="Référence de 14 chiffres sur votre facture">
+          <Input
+            placeholder="00 000 000 000 000"
+            inputMode="numeric"
+            value={value.releveCompteurs.electricite_pdl ?? ''}
+            onChange={e => setCompteur('electricite_pdl', e.target.value)}
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Prénom">
+          <Field label="Heures pleines (kWh)">
             <Input
-              placeholder="Marie"
-              value={value.bailleur.prenom}
-              onChange={e => setBailleur('prenom', e.target.value)}
+              placeholder="00000"
+              inputMode="numeric"
+              value={value.releveCompteurs.electricite_hp ?? ''}
+              onChange={e => setCompteur('electricite_hp', e.target.value)}
             />
           </Field>
-          <Field label="Nom">
+          <Field label="Heures creuses (kWh)">
             <Input
-              placeholder="Martin"
-              value={value.bailleur.nom}
-              onChange={e => setBailleur('nom', e.target.value)}
+              placeholder="00000"
+              inputMode="numeric"
+              value={value.releveCompteurs.electricite_hc ?? ''}
+              onChange={e => setCompteur('electricite_hc', e.target.value)}
             />
           </Field>
         </div>
-        <Field label="Email">
-          <Input
-            type="email"
-            placeholder="marie.martin@email.com"
-            value={value.bailleur.email ?? ''}
-            onChange={e => setBailleur('email', e.target.value)}
-          />
-        </Field>
       </Section>
 
-      <Section icon={<Calendar size={18} />} title="Relevés de compteurs">
+      <Section icon={<Droplets size={18} />} title="Eau">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Électricité (kWh)">
-            <Input
-              placeholder="12345"
-              inputMode="numeric"
-              value={value.releveCompteurs.electricite ?? ''}
-              onChange={e => setCompteur('electricite', e.target.value)}
-            />
-          </Field>
-          <Field label="Gaz (m³)">
-            <Input
-              placeholder="1234"
-              inputMode="numeric"
-              value={value.releveCompteurs.gaz ?? ''}
-              onChange={e => setCompteur('gaz', e.target.value)}
-            />
-          </Field>
           <Field label="Eau froide (m³)">
             <Input
-              placeholder="123"
-              inputMode="numeric"
-              value={value.releveCompteurs.eau ?? ''}
-              onChange={e => setCompteur('eau', e.target.value)}
+              placeholder="000"
+              inputMode="decimal"
+              value={value.releveCompteurs.eau_froide ?? ''}
+              onChange={e => setCompteur('eau_froide', e.target.value)}
             />
           </Field>
           <Field label="Eau chaude (m³)">
             <Input
-              placeholder="123"
-              inputMode="numeric"
+              placeholder="000"
+              inputMode="decimal"
               value={value.releveCompteurs.eau_chaude ?? ''}
               onChange={e => setCompteur('eau_chaude', e.target.value)}
             />
@@ -203,36 +226,16 @@ export function StepInfosGenerales({ value, onChange, onNext }: Props) {
         </div>
       </Section>
 
-      <Section icon={<Key size={18} />} title="Remises de clés">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Nombre de clés">
-            <Input
-              type="number"
-              min="0"
-              inputMode="numeric"
-              value={value.nombreCles}
-              onChange={e => set('nombreCles', Number(e.target.value))}
-            />
-          </Field>
-          <Field label="Nombre de badges">
-            <Input
-              type="number"
-              min="0"
-              inputMode="numeric"
-              value={value.nombreBadges}
-              onChange={e => set('nombreBadges', Number(e.target.value))}
-            />
-          </Field>
+      <Section icon={<Key size={18} />} title="Remise des clés">
+        <div className="space-y-2">
+          {value.cles.map((cle, i) => (
+            <CleStepper key={i} item={cle} onChange={item => updateCle(i, item)} />
+          ))}
         </div>
       </Section>
 
-      <Button
-        className="w-full"
-        size="lg"
-        onClick={onNext}
-        disabled={!isValid}
-      >
-        Continuer → Ajouter les pièces
+      <Button className="w-full" size="lg" onClick={onNext} disabled={!isValid}>
+        Continuer → Pièces
       </Button>
     </div>
   )
