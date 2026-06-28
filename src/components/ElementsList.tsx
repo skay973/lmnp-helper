@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { MessageSquare, Trash2, Plus, Pencil } from 'lucide-react'
 import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
@@ -22,6 +22,8 @@ function ElementNameSheet({
   onClose: () => void
 }) {
   const [name, setName] = useState(initial)
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { inputRef.current?.focus({ preventScroll: true }) }, [])
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
@@ -35,11 +37,11 @@ function ElementNameSheet({
         </div>
         <div className="px-4 py-4 space-y-4">
           <Input
+            ref={inputRef}
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Ex. Fenêtre, Radiateur…"
             className="text-sm h-10"
-            autoFocus
             onKeyDown={e => { if (e.key === 'Enter' && name.trim()) { onSave(name.trim()); onClose() } }}
           />
           <Button

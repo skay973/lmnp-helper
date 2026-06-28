@@ -8,6 +8,7 @@ import { StepRecapitulatif } from './pages/StepRecapitulatif'
 import { ListeAppartements } from './pages/ListeAppartements'
 import { DetailAppartement } from './pages/DetailAppartement'
 import { GestionInventaire } from './pages/GestionInventaire'
+import { GestionModele } from './pages/GestionModele'
 import { LoginPage } from './pages/LoginPage'
 import { useAuth } from './contexts/AuthContext'
 import { type EtatDesLieux, type InfosGenerales, type Piece, type TypePiece, createPiece, TYPE_PIECE_LABELS } from './types/etatDesLieux'
@@ -21,7 +22,7 @@ import { Button } from './components/ui/button'
 import { supabase } from './lib/supabase'
 import type { Inventaire } from './types/inventaire'
 
-type Screen = 'appartements' | 'detail_appt' | 'inventaire_appt' | 'edl_form' | 'done'
+type Screen = 'appartements' | 'detail_appt' | 'inventaire_appt' | 'modele_appt' | 'edl_form' | 'done'
 type EDLStep = 'infos' | 'pieces' | 'piece_detail' | 'complements' | 'inventaire' | 'recap'
 
 const STEP_LABELS = ['Infos', 'Pièces', 'Autres', 'Inventaire', 'Récap']
@@ -147,6 +148,23 @@ export default function App() {
     setEtat(e => e ? { ...e, inventaire: syncedInv } : e)
   }, [selectedAppt, etat])
 
+  const handleSaveModele = useCallback(async (pieces: PieceStock[]) => {
+    if (!selectedAppt) return
+    const asPieces = pieces.map(({ type, nom, elementKeys }) => {
+      const piece = createPiece(type, nom)
+      if (elementKeys?.length) piece.elements = Object.fromEntries(elementKeys.map(k => [k, {}]))
+      return piece
+    })
+    const currentInv = selectedAppt.inventaire ?? []
+    const syncedInv = syncInventaireWithPieces(asPieces, currentInv)
+    const stockInv = syncedInv.map(p => ({
+      ...p,
+      items: p.items.map(({ etatEntree: _unused, ...item }) => item),
+    }))
+    await supabase.from('appartements').update({ pieces, inventaire: stockInv }).eq('id', selectedAppt.id)
+    setSelectedAppt(a => a ? { ...a, pieces, inventaire: stockInv } : a)
+  }, [selectedAppt])
+
   const handleSaveInventaire = useCallback(async (inventaire: Inventaire) => {
     if (!selectedAppt) return
     // Strip etatEntree before saving to apartment — it belongs to the EDL, not the stock
@@ -175,6 +193,7 @@ export default function App() {
     if (screen === 'appartements') return [root, 'Appartements']
     if (screen === 'detail_appt') return [root, selectedAppt?.nom ?? '']
     if (screen === 'inventaire_appt') return [root, selectedAppt?.nom ?? '', 'Inventaire']
+    if (screen === 'modele_appt') return [root, selectedAppt?.nom ?? '', 'Modèle EDL']
     if (screen === 'done') return [root, 'Sauvegardé']
     if (edlStep === 'piece_detail' && editingPieceIndex !== null)
       return [root, selectedAppt?.nom ?? '', etat?.pieces[editingPieceIndex]?.nom ?? '']
@@ -236,6 +255,19 @@ export default function App() {
             onBack={() => setScreen('appartements')}
             onStartEDL={(loc, type) => startEDL(selectedAppt, loc, type)}
             onGestionInventaire={() => setScreen('inventaire_appt')}
+            onGestionModele={() => setScreen('modele_appt')}
+          />
+        )}
+
+        {screen === 'modele_appt' && selectedAppt && (
+          <GestionModele
+            pieces={selectedAppt.pieces?.length
+              ? selectedAppt.pieces
+              : makePieces(selectedAppt).map(({ type, nom, elements }) => ({
+                  type, nom, elementKeys: Object.keys(elements),
+                }))}
+            onSave={handleSaveModele}
+            onBack={() => setScreen('detail_appt')}
           />
         )}
 

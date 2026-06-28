@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronDown, ChevronUp, Plus, Trash2, Pencil } from 'lucide-react'
@@ -35,6 +35,8 @@ function InventaireItemSheet({
   const patch = (p: Partial<InventaireItem>) => setItem(i => ({ ...i, ...p }))
   const toggleEtat = (etat: EtatPhysique) =>
     patch({ etatDeclare: item.etatDeclare === etat ? undefined : etat })
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { inputRef.current?.focus({ preventScroll: true }) }, [])
 
   return (
     <>
@@ -52,11 +54,11 @@ function InventaireItemSheet({
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Désignation</label>
             <Input
+              ref={inputRef}
               value={item.designation}
               onChange={e => patch({ designation: e.target.value })}
               placeholder="Ex. Assiettes plates"
               className="text-sm h-10"
-              autoFocus
             />
           </div>
           <div className="space-y-1.5">

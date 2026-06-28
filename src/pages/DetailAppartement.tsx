@@ -65,9 +65,10 @@ interface Props {
   onBack: () => void
   onStartEDL: (locataire: LocataireAvecStatut, type: 'entree' | 'sortie') => void
   onGestionInventaire: () => void
+  onGestionModele: () => void
 }
 
-export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionInventaire }: Props) {
+export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionInventaire, onGestionModele }: Props) {
   const [locataires, setLocataires] = useState<LocataireAvecStatut[]>([])
   const [edls, setEdls] = useState<EtatDesLieuxResume[]>([])
   const [loading, setLoading] = useState(true)
@@ -187,10 +188,16 @@ export function DetailAppartement({ appartement, onBack, onStartEDL, onGestionIn
               <p className="text-xs text-blue-500 pt-1">{appartement.config.surface} m² · {appartement.config.nb_pieces} pièces</p>
             )}
           </div>
-          <button type="button" onClick={onGestionInventaire}
-            className="shrink-0 text-xs text-blue-600 font-semibold border border-blue-300 bg-white rounded-lg px-3 py-1.5 touch-manipulation hover:bg-blue-50 transition-colors">
-            Inventaire
-          </button>
+          <div className="flex flex-col gap-1.5 shrink-0">
+            <button type="button" onClick={onGestionModele}
+              className="text-xs text-blue-600 font-semibold border border-blue-300 bg-white rounded-lg px-3 py-1.5 touch-manipulation hover:bg-blue-50 transition-colors">
+              Modèle EDL
+            </button>
+            <button type="button" onClick={onGestionInventaire}
+              className="text-xs text-blue-600 font-semibold border border-blue-300 bg-white rounded-lg px-3 py-1.5 touch-manipulation hover:bg-blue-50 transition-colors">
+              Inventaire
+            </button>
+          </div>
         </div>
       </div>
 

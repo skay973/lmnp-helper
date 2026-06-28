@@ -13,8 +13,8 @@ interface Props {
   onEditPiece: (index: number) => void
 }
 
-const TYPES_COMMUNS: TypePiece[] = ['entree', 'salon', 'chambre', 'cuisine', 'salle_de_bain', 'wc', 'couloir']
-const TYPES_AUTRES: TypePiece[] = ['salle_a_manger', 'bureau', 'balcon', 'cave', 'garage', 'autre']
+const TYPES_COMMUNS: TypePiece[] = ['entree', 'wc', 'salon', 'cuisine', 'balcon', 'chambre', 'salle_de_bain']
+const TYPES_AUTRES: TypePiece[] = ['salle_a_manger', 'bureau', 'couloir', 'cave', 'garage', 'autre']
 
 export function StepPieces({ pieces, onChange, onSavePieces, onNext, onBack, onEditPiece }: Props) {
   const [showModal, setShowModal] = useState(false)
