@@ -244,7 +244,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 pt-4">
+      <main className="max-w-lg mx-auto px-4 pt-4 overflow-x-hidden">
         {screen === 'appartements' && (
           <ListeAppartements onSelect={appt => { setSelectedAppt(appt); setScreen('detail_appt') }} />
         )}
